@@ -5557,5 +5557,7 @@ bool os::pd_dll_unload(void* libhandle, char* ebuf, int ebuflen) {
 } // end: os::pd_dll_unload()
 
 jlong os::fastJavaTimeMillis() {
-  return 1000;
+  struct timespec start;
+  clock_gettime(CLOCK_REALTIME_COARSE, &start);
+  return jlong(start.tv_sec);
 }
