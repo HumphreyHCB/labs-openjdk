@@ -140,6 +140,7 @@ bool Compiler::is_intrinsic_supported(vmIntrinsics::ID id) {
     break;
   case vmIntrinsics::_arraycopy:
   case vmIntrinsics::_currentTimeMillis:
+  case vmIntrinsics::_fastCurrentTimeMillis:
   case vmIntrinsics::_nanoTime:
   case vmIntrinsics::_Reference_get:
     // Use the intrinsic version of Reference.get() so that the value in

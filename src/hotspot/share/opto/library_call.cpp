@@ -502,6 +502,7 @@ bool LibraryCallKit::try_to_inline(int predicate) {
 #endif
   case vmIntrinsics::_currentTimeMillis:        return inline_native_time_funcs(CAST_FROM_FN_PTR(address, os::javaTimeMillis), "currentTimeMillis");
   case vmIntrinsics::_nanoTime:                 return inline_native_time_funcs(CAST_FROM_FN_PTR(address, os::javaTimeNanos), "nanoTime");
+  case vmIntrinsics::_fastCurrentTimeMillis:    return inline_native_time_funcs(CAST_FROM_FN_PTR(address, os::fastJavaTimeMillis), "fastCurrentTimeMillis");
   case vmIntrinsics::_writeback0:               return inline_unsafe_writeback0();
   case vmIntrinsics::_writebackPreSync0:        return inline_unsafe_writebackSync0(true);
   case vmIntrinsics::_writebackPostSync0:       return inline_unsafe_writebackSync0(false);

@@ -2952,6 +2952,10 @@ void LIRGenerator::do_Intrinsic(Intrinsic* x) {
     do_RuntimeCall(CAST_FROM_FN_PTR(address, os::javaTimeMillis), x);
     break;
 
+  case vmIntrinsics::_fastCurrentTimeMillis:
+    do_RuntimeCall(CAST_FROM_FN_PTR(address, os::fastJavaTimeMillis), x);
+    break;
+
   case vmIntrinsics::_nanoTime:
     do_RuntimeCall(CAST_FROM_FN_PTR(address, os::javaTimeNanos), x);
     break;

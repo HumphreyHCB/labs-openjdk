@@ -793,6 +793,7 @@
   declare_function(os::dll_load)                                          \
   declare_function(os::dll_lookup)                                        \
   declare_function(os::javaTimeMillis)                                    \
+  declare_function(os::fastJavaTimeMillis)                                \
   declare_function(os::javaTimeNanos)                                     \
                                                                           \
   declare_function(Deoptimization::fetch_unroll_info)                     \

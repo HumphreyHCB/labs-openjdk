@@ -274,6 +274,8 @@ class methodHandle;
    do_name(     currentTimeMillis_name,                          "currentTimeMillis")                                   \
   do_intrinsic(_nanoTime,                 java_lang_System,       nanoTime_name,          void_long_signature,   F_SN)  \
    do_name(     nanoTime_name,                                   "nanoTime")                                            \
+  do_intrinsic(_fastCurrentTimeMillis,        java_lang_System,       fastCurrentTimeMillis_name, void_long_signature,   F_SN)  \
+   do_name(     fastCurrentTimeMillis_name,                          "fastCurrentTimeMillis")                                   \
                                                                                                                         \
   JFR_INTRINSICS(do_intrinsic, do_class, do_name, do_signature, do_alias)                                               \
                                                                                                                         \

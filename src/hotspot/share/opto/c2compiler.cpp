@@ -735,6 +735,7 @@ bool C2Compiler::is_intrinsic_supported(vmIntrinsics::ID id) {
 #endif
   case vmIntrinsics::_currentTimeMillis:
   case vmIntrinsics::_nanoTime:
+  case vmIntrinsics::_fastCurrentTimeMillis:
   case vmIntrinsics::_allocateInstance:
   case vmIntrinsics::_allocateUninitializedArray:
   case vmIntrinsics::_newArray:

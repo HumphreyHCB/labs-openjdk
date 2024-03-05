@@ -91,6 +91,9 @@ JNIEXPORT jlong JNICALL
 JVM_CurrentTimeMillis(JNIEnv *env, jclass ignored);
 
 JNIEXPORT jlong JNICALL
+JVM_FastCurrentTimeMillis(JNIEnv *env, jclass ignored);
+
+JNIEXPORT jlong JNICALL
 JVM_NanoTime(JNIEnv *env, jclass ignored);
 
 JNIEXPORT jlong JNICALL

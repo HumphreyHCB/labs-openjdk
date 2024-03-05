@@ -244,6 +244,10 @@ JVM_LEAF(jlong, JVM_CurrentTimeMillis(JNIEnv *env, jclass ignored))
   return os::javaTimeMillis();
 JVM_END
 
+JVM_LEAF(jlong, JVM_FastCurrentTimeMillis(JNIEnv *env, jclass ignored))
+  return os::fastJavaTimeMillis();
+JVM_END
+
 JVM_LEAF(jlong, JVM_NanoTime(JNIEnv *env, jclass ignored))
   return os::javaTimeNanos();
 JVM_END

@@ -5555,3 +5555,7 @@ bool os::pd_dll_unload(void* libhandle, char* ebuf, int ebuflen) {
 
   return res;
 } // end: os::pd_dll_unload()
+
+jlong os::fastJavaTimeMillis() {
+  return 1000;
+}
