@@ -47,12 +47,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.imageio.ImageIO;
+import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -155,6 +157,7 @@ import static javax.swing.SwingUtilities.isEventDispatchThread;
  *     <li>the title of the instruction UI,</li>
  *     <li>the timeout of the test,</li>
  *     <li>the size of the instruction UI via rows and columns, and</li>
+ *     <li>to add a log area</li>,
  *     <li>to enable screenshots.</li>
  * </ul>
  */
@@ -203,6 +206,8 @@ public final class PassFailJFrame {
     private static JFrame frame;
 
     private static Robot robot;
+
+    private static JTextArea logArea;
 
     public enum Position {HORIZONTAL, VERTICAL, TOP_LEFT_CORNER}
 
@@ -373,6 +378,20 @@ public final class PassFailJFrame {
         }
     }
 
+    /**
+     * Does the same as {@link #invokeOnEDT(Runnable)}, but does not throw
+     * any checked exceptions.
+     *
+     * @param doRun an operation to run on EDT
+     */
+    private static void invokeOnEDTUncheckedException(Runnable doRun) {
+        try {
+            invokeOnEDT(doRun);
+        } catch (InterruptedException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private static void createUI(String title, String instructions,
                                  long testTimeOut, int rows, int columns,
                                  boolean enableScreenCapture) {
@@ -384,7 +403,8 @@ public final class PassFailJFrame {
         frame.add(createInstructionUIPanel(instructions,
                                            testTimeOut,
                                            rows, columns,
-                                           enableScreenCapture),
+                                           enableScreenCapture,
+                                           false, 0),
                   BorderLayout.CENTER);
         frame.pack();
         frame.setLocationRelativeTo(null);
@@ -401,8 +421,9 @@ public final class PassFailJFrame {
                 createInstructionUIPanel(builder.instructions,
                                          builder.testTimeOut,
                                          builder.rows, builder.columns,
-                                         builder.screenCapture);
-
+                                         builder.screenCapture,
+                                         builder.addLogArea,
+                                         builder.logAreaRows);
         if (builder.splitUI) {
             JSplitPane splitPane = new JSplitPane(
                     builder.splitUIOrientation,
@@ -421,7 +442,9 @@ public final class PassFailJFrame {
     private static JComponent createInstructionUIPanel(String instructions,
                                                        long testTimeOut,
                                                        int rows, int columns,
-                                                       boolean enableScreenCapture) {
+                                                       boolean enableScreenCapture,
+                                                       boolean addLogArea,
+                                                       int logAreaRows) {
         JPanel main = new JPanel(new BorderLayout());
 
         JLabel testTimeoutLabel = new JLabel("", JLabel.CENTER);
@@ -455,7 +478,20 @@ public final class PassFailJFrame {
             buttonsPanel.add(createCapturePanel());
         }
 
-        main.add(buttonsPanel, BorderLayout.SOUTH);
+        if (addLogArea) {
+            logArea = new JTextArea(logAreaRows, columns);
+            logArea.setEditable(false);
+
+            Box buttonsLogPanel = Box.createVerticalBox();
+
+            buttonsLogPanel.add(buttonsPanel);
+            buttonsLogPanel.add(new JScrollPane(logArea));
+
+            main.add(buttonsLogPanel, BorderLayout.SOUTH);
+        } else {
+            main.add(buttonsPanel, BorderLayout.SOUTH);
+        }
+
         main.setMinimumSize(main.getPreferredSize());
 
         return main;
@@ -639,7 +675,8 @@ public final class PassFailJFrame {
             long hours = leftTime / 3_600_000;
             long minutes = (leftTime - hours * 3_600_000) / 60_000;
             long seconds = (leftTime - hours * 3_600_000 - minutes * 60_000) / 1_000;
-            label.setText(String.format("Test timeout: %02d:%02d:%02d",
+            label.setText(String.format(Locale.ENGLISH,
+                                        "Test timeout: %02d:%02d:%02d",
                                         hours, minutes, seconds));
         }
 
@@ -1039,6 +1076,36 @@ public final class PassFailJFrame {
         latch.countDown();
     }
 
+    /**
+     * Adds a {@code message} to the log area, if enabled by
+     * {@link Builder#logArea()} or {@link Builder#logArea(int)}.
+     *
+     * @param message to log
+     */
+    public static void log(String message) {
+        System.out.println("PassFailJFrame: " + message);
+        invokeOnEDTUncheckedException(() -> logArea.append(message + "\n"));
+    }
+
+    /**
+     * Clears the log area, if enabled by
+     * {@link Builder#logArea()} or {@link Builder#logArea(int)}.
+     */
+    public static void logClear() {
+        System.out.println("\nPassFailJFrame: log cleared\n");
+        invokeOnEDTUncheckedException(() -> logArea.setText(""));
+    }
+
+    /**
+     * Replaces the log area content with provided {@code text}, if enabled by
+     * {@link Builder#logArea()} or {@link Builder#logArea(int)}.
+     * @param text new text for the log area
+     */
+    public static void logSet(String text) {
+        System.out.println("\nPassFailJFrame: log set to:\n" + text + "\n");
+        invokeOnEDTUncheckedException(() -> logArea.setText(text));
+    }
+
     public static final class Builder {
         private String title;
         private String instructions;
@@ -1046,6 +1113,8 @@ public final class PassFailJFrame {
         private int rows;
         private int columns;
         private boolean screenCapture;
+        private boolean addLogArea;
+        private int logAreaRows = 10;
 
         private List<? extends Window> testWindows;
         private WindowListCreator windowListCreator;
@@ -1056,6 +1125,14 @@ public final class PassFailJFrame {
         private InstructionUI instructionUIHandler;
 
         private Position position;
+
+        /**
+         * A private constructor for the builder,
+         * it should not be created directly.
+         * Use {@code PassFailJFrame.builder()} method instead.
+         */
+        private Builder() {
+        }
 
         public Builder title(String title) {
             this.title = title;
@@ -1084,6 +1161,37 @@ public final class PassFailJFrame {
 
         public Builder screenCapture() {
             this.screenCapture = true;
+            return this;
+        }
+
+        /**
+         * Adds a log area below the "Pass", "Fail" buttons.
+         * <p>
+         * The log area can be controlled by {@link #log(String)},
+         * {@link #logClear()} and {@link #logSet(String)}.
+         *
+         * @return this builder
+         */
+        public Builder logArea() {
+            this.addLogArea = true;
+            return this;
+        }
+
+        /**
+         * Adds a log area below the "Pass", "Fail" buttons.
+         * <p>
+         * The log area can be controlled by {@link #log(String)},
+         * {@link #logClear()} and {@link #logSet(String)}.
+         * <p>
+         * The number of columns is taken from the number of
+         * columns in the instructional JTextArea.
+         *
+         * @param rows of the log area
+         * @return this builder
+         */
+        public Builder logArea(int rows) {
+            this.addLogArea = true;
+            this.logAreaRows = rows;
             return this;
         }
 
@@ -1329,14 +1437,6 @@ public final class PassFailJFrame {
                     || (!splitUI && panelCreator != null))) {
 
                 position = Position.HORIZONTAL;
-            }
-
-            if (panelCreator != null) {
-                if (splitUI && (testWindows != null || windowListCreator != null)) {
-                    // TODO Is it required? We can support both
-                    throw new IllegalStateException("Split UI is not allowed "
-                                                    + "with additional windows");
-                }
             }
 
             if (positionWindows != null) {
