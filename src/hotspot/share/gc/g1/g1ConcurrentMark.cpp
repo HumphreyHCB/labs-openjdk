@@ -29,7 +29,6 @@
 #include "gc/g1/g1BatchedTask.hpp"
 #include "gc/g1/g1CardSetMemory.hpp"
 #include "gc/g1/g1CollectedHeap.inline.hpp"
-#include "gc/g1/g1CollectionSetChooser.hpp"
 #include "gc/g1/g1CollectorState.hpp"
 #include "gc/g1/g1ConcurrentMark.inline.hpp"
 #include "gc/g1/g1ConcurrentMarkThread.inline.hpp"
@@ -77,18 +76,6 @@
 #include "utilities/formatBuffer.hpp"
 #include "utilities/growableArray.hpp"
 #include "utilities/powerOfTwo.hpp"
-
-G1CMIsAliveClosure::G1CMIsAliveClosure() : _cm(nullptr) { }
-
-G1CMIsAliveClosure::G1CMIsAliveClosure(G1ConcurrentMark* cm) : _cm(cm) {
-  assert(cm != nullptr, "must be");
-}
-
-void G1CMIsAliveClosure::initialize(G1ConcurrentMark* cm) {
-  assert(cm != nullptr, "must be");
-  assert(_cm == nullptr, "double initialize");
-  _cm = cm;
-}
 
 bool G1CMBitMapClosure::do_addr(HeapWord* const addr) {
   assert(addr < _cm->finger(), "invariant");
@@ -514,7 +501,6 @@ G1ConcurrentMark::G1ConcurrentMark(G1CollectedHeap* g1h,
   _max_concurrent_workers(0),
 
   _region_mark_stats(NEW_C_HEAP_ARRAY(G1RegionMarkStats, _g1h->max_reserved_regions(), mtGC)),
-  _top_at_mark_starts(NEW_C_HEAP_ARRAY(HeapWord*, _g1h->max_reserved_regions(), mtGC)),
   _top_at_rebuild_starts(NEW_C_HEAP_ARRAY(HeapWord*, _g1h->max_reserved_regions(), mtGC)),
   _needs_remembered_set_rebuild(false)
 {
@@ -661,7 +647,6 @@ void G1ConcurrentMark::reset_at_marking_complete() {
 }
 
 G1ConcurrentMark::~G1ConcurrentMark() {
-  FREE_C_HEAP_ARRAY(HeapWord*, _top_at_mark_starts);
   FREE_C_HEAP_ARRAY(HeapWord*, _top_at_rebuild_starts);
   FREE_C_HEAP_ARRAY(G1RegionMarkStats, _region_mark_stats);
   // The G1ConcurrentMark instance is never freed.
@@ -707,7 +692,7 @@ private:
           assert(_bitmap->get_next_marked_addr(r->bottom(), r->end()) == r->end(), "Should not have marked bits");
           return r->bottom();
         }
-        assert(_bitmap->get_next_marked_addr(_cm->top_at_mark_start(r), r->end()) == r->end(), "Should not have marked bits above tams");
+        assert(_bitmap->get_next_marked_addr(r->top_at_mark_start(), r->end()) == r->end(), "Should not have marked bits above tams");
       }
       return r->end();
     }
@@ -751,7 +736,7 @@ private:
       }
       assert(cur >= end, "Must have completed iteration over the bitmap for region %u.", r->hrm_index());
 
-      _cm->reset_top_at_mark_start(r);
+      r->reset_top_at_mark_start();
 
       return false;
     }
@@ -863,15 +848,9 @@ void G1PreConcurrentStartTask::ResetMarkingStateTask::do_work(uint worker_id) {
 }
 
 class NoteStartOfMarkHRClosure : public HeapRegionClosure {
-  G1ConcurrentMark* _cm;
-
 public:
-  NoteStartOfMarkHRClosure() : HeapRegionClosure(), _cm(G1CollectedHeap::heap()->concurrent_mark()) { }
-
   bool do_heap_region(HeapRegion* r) override {
-    if (r->is_old_or_humongous() && !r->is_collection_set_candidate()) {
-      _cm->update_top_at_mark_start(r);
-    }
+    r->note_start_of_marking();
     return false;
   }
 };
@@ -1035,9 +1014,9 @@ void G1ConcurrentMark::scan_root_region(const MemRegion* region, uint worker_id)
 #ifdef ASSERT
   HeapWord* last = region->last();
   HeapRegion* hr = _g1h->heap_region_containing(last);
-  assert(hr->is_old() || top_at_mark_start(hr) == hr->bottom(),
+  assert(hr->is_old() || hr->top_at_mark_start() == hr->bottom(),
          "Root regions must be old or survivor/eden but region %u is %s", hr->hrm_index(), hr->get_type_str());
-  assert(top_at_mark_start(hr) == region->start(),
+  assert(hr->top_at_mark_start() == region->start(),
          "MemRegion start should be equal to TAMS");
 #endif
 
@@ -1099,11 +1078,11 @@ bool G1ConcurrentMark::wait_until_root_region_scan_finished() {
 }
 
 void G1ConcurrentMark::add_root_region(HeapRegion* r) {
-  root_regions()->add(top_at_mark_start(r), r->top());
+  root_regions()->add(r->top_at_mark_start(), r->top());
 }
 
 bool G1ConcurrentMark::is_root_region(HeapRegion* r) {
-  return root_regions()->contains(MemRegion(top_at_mark_start(r), r->top()));
+  return root_regions()->contains(MemRegion(r->top_at_mark_start(), r->top()));
 }
 
 void G1ConcurrentMark::root_region_scan_abort_and_wait() {
@@ -1197,158 +1176,111 @@ void G1ConcurrentMark::verify_during_pause(G1HeapVerifier::G1VerifyType type,
   }
 }
 
-// Update per-region liveness info based on CM stats. Then, reclaim empty
-// regions right away and select certain regions (e.g. sparse ones) for remset
-// rebuild.
-class G1UpdateRegionLivenessAndSelectForRebuildTask : public WorkerTask {
+class G1UpdateRemSetTrackingBeforeRebuildTask : public WorkerTask {
   G1CollectedHeap* _g1h;
   G1ConcurrentMark* _cm;
   HeapRegionClaimer _hrclaimer;
-
   uint volatile _total_selected_for_rebuild;
 
-  // Reclaimed empty regions
-  FreeRegionList _cleanup_list;
+  G1PrintRegionLivenessInfoClosure _cl;
 
-  struct G1OnRegionClosure : public HeapRegionClosure {
+  class G1UpdateRemSetTrackingBeforeRebuild : public HeapRegionClosure {
     G1CollectedHeap* _g1h;
     G1ConcurrentMark* _cm;
-    // The number of regions actually selected for rebuild.
-    uint _num_selected_for_rebuild;
 
-    size_t _freed_bytes;
-    uint _num_old_regions_removed;
-    uint _num_humongous_regions_removed;
-    FreeRegionList* _local_cleanup_list;
+    G1PrintRegionLivenessInfoClosure* _cl;
 
-    G1OnRegionClosure(G1CollectedHeap* g1h,
-                      G1ConcurrentMark* cm,
-                      FreeRegionList* local_cleanup_list) :
-      _g1h(g1h),
-      _cm(cm),
-      _num_selected_for_rebuild(0),
-      _freed_bytes(0),
-      _num_old_regions_removed(0),
-      _num_humongous_regions_removed(0),
-      _local_cleanup_list(local_cleanup_list) {}
+    uint _num_regions_selected_for_rebuild;  // The number of regions actually selected for rebuild.
 
-    void reclaim_empty_humongous_region(HeapRegion* hr) {
-      assert(!hr->has_pinned_objects(), "precondition");
-      assert(hr->is_starts_humongous(), "precondition");
+    void update_remset_before_rebuild(HeapRegion* hr) {
+      G1RemSetTrackingPolicy* tracking_policy = _g1h->policy()->remset_tracker();
 
-      auto on_humongous_region = [&] (HeapRegion* hr) {
-        assert(hr->used() > 0, "precondition");
-        assert(!hr->has_pinned_objects(), "precondition");
-        assert(hr->is_humongous(), "precondition");
-
-        _num_humongous_regions_removed++;
-        _freed_bytes += hr->used();
-        hr->set_containing_set(nullptr);
-        hr->clear_cardtable();
-        _g1h->concurrent_mark()->clear_statistics(hr);
-        _g1h->free_humongous_region(hr, _local_cleanup_list);
-      };
-
-      _g1h->humongous_obj_regions_iterate(hr, on_humongous_region);
-    }
-
-    void reclaim_empty_old_region(HeapRegion* hr) {
-      assert(hr->used() > 0, "precondition");
-      assert(!hr->has_pinned_objects(), "precondition");
-      assert(hr->is_old(), "precondition");
-
-      _num_old_regions_removed++;
-      _freed_bytes += hr->used();
-      hr->set_containing_set(nullptr);
-      hr->clear_cardtable();
-      _g1h->concurrent_mark()->clear_statistics(hr);
-      _g1h->free_region(hr, _local_cleanup_list);
-    }
-
-    bool do_heap_region(HeapRegion* hr) override {
-      G1RemSetTrackingPolicy* tracker = _g1h->policy()->remset_tracker();
-      if (hr->is_starts_humongous()) {
-        // The liveness of this humongous obj decided by either its allocation
-        // time (allocated after conc-mark-start, i.e. live) or conc-marking.
-        const bool is_live = _cm->top_at_mark_start(hr) == hr->bottom()
-                             || _cm->contains_live_object(hr->hrm_index());
-        if (is_live) {
-          const bool selected_for_rebuild = tracker->update_humongous_before_rebuild(hr);
-          auto on_humongous_region = [&] (HeapRegion* hr) {
-            if (selected_for_rebuild) {
-              _num_selected_for_rebuild++;
-            }
-            _cm->update_top_at_rebuild_start(hr);
-          };
-
-          _g1h->humongous_obj_regions_iterate(hr, on_humongous_region);
-        } else {
-          reclaim_empty_humongous_region(hr);
-        }
-      } else if (hr->is_old()) {
-        hr->note_end_of_marking(_cm->top_at_mark_start(hr), _cm->live_bytes(hr->hrm_index()));
-
-        if (hr->live_bytes() != 0) {
-          if (tracker->update_old_before_rebuild(hr)) {
-            _num_selected_for_rebuild++;
-          }
-          _cm->update_top_at_rebuild_start(hr);
-        } else {
-          reclaim_empty_old_region(hr);
-        }
+      bool selected_for_rebuild;
+      if (hr->is_humongous()) {
+        bool const is_live = _cm->contains_live_object(hr->humongous_start_region()->hrm_index());
+        selected_for_rebuild = tracking_policy->update_humongous_before_rebuild(hr, is_live);
+      } else {
+        size_t const live_bytes = _cm->live_bytes(hr->hrm_index());
+        selected_for_rebuild = tracking_policy->update_before_rebuild(hr, live_bytes);
       }
+      if (selected_for_rebuild) {
+        _num_regions_selected_for_rebuild++;
+      }
+      _cm->update_top_at_rebuild_start(hr);
+    }
+
+    // Distribute the given marked bytes across the humongous object starting
+    // with hr and note end of marking for these regions.
+    void distribute_marked_bytes(HeapRegion* hr, size_t marked_bytes) {
+      // Dead humongous objects (marked_bytes == 0) may have already been unloaded.
+      assert(marked_bytes == 0 || cast_to_oop(hr->bottom())->size() * HeapWordSize == marked_bytes,
+             "Marked bytes should either be 0 or the same as humongous object (%zu) but is %zu",
+             cast_to_oop(hr->bottom())->size() * HeapWordSize, marked_bytes);
+
+      auto distribute_bytes = [&] (HeapRegion* r) {
+        size_t const bytes_to_add = MIN2(HeapRegion::GrainBytes, marked_bytes);
+
+        log_trace(gc, marking)("Adding %zu bytes to humongous region %u (%s)",
+                               bytes_to_add, r->hrm_index(), r->get_type_str());
+        add_marked_bytes_and_note_end(r, bytes_to_add);
+        marked_bytes -= bytes_to_add;
+      };
+      _g1h->humongous_obj_regions_iterate(hr, distribute_bytes);
+    }
+
+    void update_marked_bytes(HeapRegion* hr) {
+      uint const region_idx = hr->hrm_index();
+      size_t const marked_bytes = _cm->live_bytes(region_idx);
+      // The marking attributes the object's size completely to the humongous starts
+      // region. We need to distribute this value across the entire set of regions a
+      // humongous object spans.
+      if (hr->is_humongous()) {
+        assert(hr->is_starts_humongous() || marked_bytes == 0,
+               "Should not have live bytes %zu in continues humongous region %u (%s)",
+               marked_bytes, region_idx, hr->get_type_str());
+        if (hr->is_starts_humongous()) {
+          distribute_marked_bytes(hr, marked_bytes);
+        }
+      } else {
+        log_trace(gc, marking)("Adding %zu bytes to region %u (%s)", marked_bytes, region_idx, hr->get_type_str());
+        add_marked_bytes_and_note_end(hr, marked_bytes);
+      }
+    }
+
+    void add_marked_bytes_and_note_end(HeapRegion* hr, size_t marked_bytes) {
+      hr->note_end_of_marking(marked_bytes);
+      _cl->do_heap_region(hr);
+    }
+
+  public:
+    G1UpdateRemSetTrackingBeforeRebuild(G1CollectedHeap* g1h, G1ConcurrentMark* cm, G1PrintRegionLivenessInfoClosure* cl) :
+      _g1h(g1h), _cm(cm), _cl(cl), _num_regions_selected_for_rebuild(0) { }
+
+    virtual bool do_heap_region(HeapRegion* r) {
+      update_remset_before_rebuild(r);
+      update_marked_bytes(r);
 
       return false;
     }
+
+    uint num_selected_for_rebuild() const { return _num_regions_selected_for_rebuild; }
   };
 
 public:
-  G1UpdateRegionLivenessAndSelectForRebuildTask(G1CollectedHeap* g1h,
-                                                G1ConcurrentMark* cm,
-                                                uint num_workers) :
-    WorkerTask("G1 Update Region Liveness and Select For Rebuild"),
-    _g1h(g1h),
-    _cm(cm),
-    _hrclaimer(num_workers),
-    _total_selected_for_rebuild(0),
-    _cleanup_list("Empty Regions After Mark List") {}
+  G1UpdateRemSetTrackingBeforeRebuildTask(G1CollectedHeap* g1h, G1ConcurrentMark* cm, uint num_workers) :
+    WorkerTask("G1 Update RemSet Tracking Before Rebuild"),
+    _g1h(g1h), _cm(cm), _hrclaimer(num_workers), _total_selected_for_rebuild(0), _cl("Post-Marking") { }
 
-  ~G1UpdateRegionLivenessAndSelectForRebuildTask() {
-    if (!_cleanup_list.is_empty()) {
-      log_debug(gc)("Reclaimed %u empty regions", _cleanup_list.length());
-      // Now print the empty regions list.
-      _g1h->hr_printer()->cleanup(&_cleanup_list);
-      // And actually make them available.
-      _g1h->prepend_to_freelist(&_cleanup_list);
-    }
-  }
-
-  void work(uint worker_id) override {
-    FreeRegionList local_cleanup_list("Local Cleanup List");
-    G1OnRegionClosure on_region_cl(_g1h, _cm, &local_cleanup_list);
-    _g1h->heap_region_par_iterate_from_worker_offset(&on_region_cl, &_hrclaimer, worker_id);
-
-    Atomic::add(&_total_selected_for_rebuild, on_region_cl._num_selected_for_rebuild);
-
-    // Update the old/humongous region sets
-    _g1h->remove_from_old_gen_sets(on_region_cl._num_old_regions_removed,
-                                   on_region_cl._num_humongous_regions_removed);
-
-    {
-      MutexLocker x(G1RareEvent_lock, Mutex::_no_safepoint_check_flag);
-      _g1h->decrement_summary_bytes(on_region_cl._freed_bytes);
-
-      _cleanup_list.add_ordered(&local_cleanup_list);
-      assert(local_cleanup_list.is_empty(), "post-condition");
-    }
+  virtual void work(uint worker_id) {
+    G1UpdateRemSetTrackingBeforeRebuild update_cl(_g1h, _cm, &_cl);
+    _g1h->heap_region_par_iterate_from_worker_offset(&update_cl, &_hrclaimer, worker_id);
+    Atomic::add(&_total_selected_for_rebuild, update_cl.num_selected_for_rebuild());
   }
 
   uint total_selected_for_rebuild() const { return _total_selected_for_rebuild; }
 
-  static uint desired_num_workers(uint num_regions) {
-    const uint num_regions_per_worker = 384;
-    return (num_regions + num_regions_per_worker - 1) / num_regions_per_worker;
-  }
+  // Number of regions for which roughly one thread should be spawned for this work.
+  static const uint RegionsPerThread = 384;
 };
 
 class G1UpdateRegionsAfterRebuild : public HeapRegionClosure {
@@ -1406,7 +1338,7 @@ void G1ConcurrentMark::remark() {
 
     // Unload Klasses, String, Code Cache, etc.
     if (ClassUnloadingWithConcurrentMark) {
-      G1CMIsAliveClosure is_alive(this);
+      G1CMIsAliveClosure is_alive(_g1h);
       _g1h->unload_classes_and_code("Class Unloading", &is_alive, _gc_timer_cm);
     }
 
@@ -1427,22 +1359,24 @@ void G1ConcurrentMark::remark() {
     _g1h->verifier()->verify_bitmap_clear(true /* above_tams_only */);
 
     {
-      GCTraceTime(Debug, gc, phases) debug("Select For Rebuild and Reclaim Empty Regions", _gc_timer_cm);
+      GCTraceTime(Debug, gc, phases) debug("Update Remembered Set Tracking Before Rebuild", _gc_timer_cm);
 
-      G1UpdateRegionLivenessAndSelectForRebuildTask cl(_g1h, this, _g1h->workers()->active_workers());
-      uint const num_workers = MIN2(G1UpdateRegionLivenessAndSelectForRebuildTask::desired_num_workers(_g1h->num_regions()),
-                                    _g1h->workers()->active_workers());
+      uint const workers_by_capacity = (_g1h->num_regions() + G1UpdateRemSetTrackingBeforeRebuildTask::RegionsPerThread - 1) /
+                                       G1UpdateRemSetTrackingBeforeRebuildTask::RegionsPerThread;
+      uint const num_workers = MIN2(_g1h->workers()->active_workers(), workers_by_capacity);
+
+      G1UpdateRemSetTrackingBeforeRebuildTask cl(_g1h, this, num_workers);
       log_debug(gc,ergo)("Running %s using %u workers for %u regions in heap", cl.name(), num_workers, _g1h->num_regions());
       _g1h->workers()->run_task(&cl, num_workers);
 
       log_debug(gc, remset, tracking)("Remembered Set Tracking update regions total %u, selected %u",
-                                        _g1h->num_regions(), cl.total_selected_for_rebuild());
+                                      _g1h->num_regions(), cl.total_selected_for_rebuild());
+
       _needs_remembered_set_rebuild = (cl.total_selected_for_rebuild() > 0);
     }
-
-    if (log_is_enabled(Trace, gc, liveness)) {
-      G1PrintRegionLivenessInfoClosure cl("Post-Marking");
-      _g1h->heap_region_iterate(&cl);
+    {
+      GCTraceTime(Debug, gc, phases) debug("Reclaim Empty Regions", _gc_timer_cm);
+      reclaim_empty_regions();
     }
 
     // Potentially, some empty-regions have been reclaimed; make this a
@@ -1488,6 +1422,98 @@ void G1ConcurrentMark::remark() {
   _g1h->update_parallel_gc_threads_cpu_time();
 
   policy->record_concurrent_mark_remark_end();
+}
+
+class G1ReclaimEmptyRegionsTask : public WorkerTask {
+  class G1ReclaimEmptyRegionsClosure : public HeapRegionClosure {
+    G1CollectedHeap* _g1h;
+    size_t _freed_bytes;
+    FreeRegionList* _local_cleanup_list;
+    uint _old_regions_removed;
+    uint _humongous_regions_removed;
+
+  public:
+    G1ReclaimEmptyRegionsClosure(G1CollectedHeap* g1h,
+                                 FreeRegionList* local_cleanup_list) :
+      _g1h(g1h),
+      _freed_bytes(0),
+      _local_cleanup_list(local_cleanup_list),
+      _old_regions_removed(0),
+      _humongous_regions_removed(0) { }
+
+    size_t freed_bytes() { return _freed_bytes; }
+    uint old_regions_removed() { return _old_regions_removed; }
+    uint humongous_regions_removed() { return _humongous_regions_removed; }
+
+    bool do_heap_region(HeapRegion *hr) {
+      bool can_reclaim = hr->used() > 0 && hr->live_bytes() == 0 &&
+                         !hr->is_young() && !hr->has_pinned_objects();
+
+      if (can_reclaim) {
+        log_trace(gc, marking)("Reclaimed empty old gen region %u (%s) bot " PTR_FORMAT,
+                               hr->hrm_index(), hr->get_short_type_str(), p2i(hr->bottom()));
+        _freed_bytes += hr->used();
+        hr->set_containing_set(nullptr);
+        if (hr->is_humongous()) {
+          _humongous_regions_removed++;
+          _g1h->free_humongous_region(hr, _local_cleanup_list);
+        } else {
+          _old_regions_removed++;
+          _g1h->free_region(hr, _local_cleanup_list);
+        }
+        hr->clear_cardtable();
+        _g1h->concurrent_mark()->clear_statistics(hr);
+      }
+
+      return false;
+    }
+  };
+
+  G1CollectedHeap* _g1h;
+  FreeRegionList* _cleanup_list;
+  HeapRegionClaimer _hrclaimer;
+
+public:
+  G1ReclaimEmptyRegionsTask(G1CollectedHeap* g1h, FreeRegionList* cleanup_list, uint n_workers) :
+    WorkerTask("G1 Cleanup"),
+    _g1h(g1h),
+    _cleanup_list(cleanup_list),
+    _hrclaimer(n_workers) {
+  }
+
+  void work(uint worker_id) {
+    FreeRegionList local_cleanup_list("Local Cleanup List");
+    G1ReclaimEmptyRegionsClosure cl(_g1h, &local_cleanup_list);
+    _g1h->heap_region_par_iterate_from_worker_offset(&cl, &_hrclaimer, worker_id);
+    assert(cl.is_complete(), "Shouldn't have aborted!");
+
+    // Now update the old/humongous region sets
+    _g1h->remove_from_old_gen_sets(cl.old_regions_removed(),
+                                   cl.humongous_regions_removed());
+    {
+      MutexLocker x(G1RareEvent_lock, Mutex::_no_safepoint_check_flag);
+      _g1h->decrement_summary_bytes(cl.freed_bytes());
+
+      _cleanup_list->add_ordered(&local_cleanup_list);
+      assert(local_cleanup_list.is_empty(), "post-condition");
+    }
+  }
+};
+
+void G1ConcurrentMark::reclaim_empty_regions() {
+  WorkerThreads* workers = _g1h->workers();
+  FreeRegionList empty_regions_list("Empty Regions After Mark List");
+
+  G1ReclaimEmptyRegionsTask cl(_g1h, &empty_regions_list, workers->active_workers());
+  workers->run_task(&cl);
+
+  if (!empty_regions_list.is_empty()) {
+    log_debug(gc)("Reclaimed %u empty regions", empty_regions_list.length());
+    // Now print the empty regions list.
+    _g1h->hr_printer()->cleanup(&empty_regions_list);
+    // And actually make them available.
+    _g1h->prepend_to_freelist(&empty_regions_list);
+  }
 }
 
 void G1ConcurrentMark::compute_new_sizes() {
@@ -1660,7 +1686,7 @@ public:
 
   void work(uint worker_id) override {
     assert(worker_id < _max_workers, "sanity");
-    G1CMIsAliveClosure is_alive(&_cm);
+    G1CMIsAliveClosure is_alive(&_g1h);
     uint index = (_tm == RefProcThreadModel::Single) ? 0 : worker_id;
     G1CMKeepAliveAndDrainClosure keep_alive(&_cm, _cm.task(index), _tm == RefProcThreadModel::Single);
     BarrierEnqueueDiscoveredFieldClosure enqueue;
@@ -1739,7 +1765,7 @@ void G1ConcurrentMark::weak_refs_work() {
 
   {
     GCTraceTime(Debug, gc, phases) debug("Weak Processing", _gc_timer_cm);
-    G1CMIsAliveClosure is_alive(this);
+    G1CMIsAliveClosure is_alive(_g1h);
     WeakProcessor::weak_oops_do(_g1h->workers(), &is_alive, &do_nothing_cl, 1);
   }
 }
@@ -1918,9 +1944,9 @@ HeapRegion* G1ConcurrentMark::claim_region(uint worker_id) {
     if (res == finger && curr_region != nullptr) {
       // we succeeded
       HeapWord* bottom = curr_region->bottom();
-      HeapWord* limit = top_at_mark_start(curr_region);
+      HeapWord* limit = curr_region->top_at_mark_start();
 
-      log_trace(gc, marking)("Claim region %u bottom " PTR_FORMAT " tams " PTR_FORMAT, curr_region->hrm_index(), p2i(curr_region->bottom()), p2i(top_at_mark_start(curr_region)));
+      log_trace(gc, marking)("Claim region %u bottom " PTR_FORMAT " tams " PTR_FORMAT, curr_region->hrm_index(), p2i(curr_region->bottom()), p2i(curr_region->top_at_mark_start()));
       // notice that _finger == end cannot be guaranteed here since,
       // someone else might have moved the finger even further
       assert(_finger >= end, "the finger should have moved forward");
@@ -2143,7 +2169,7 @@ void G1CMTask::setup_for_region(HeapRegion* hr) {
 void G1CMTask::update_region_limit() {
   HeapRegion* hr = _curr_region;
   HeapWord* bottom = hr->bottom();
-  HeapWord* limit = _cm->top_at_mark_start(hr);
+  HeapWord* limit = hr->top_at_mark_start();
 
   if (limit == bottom) {
     // The region was collected underneath our feet.

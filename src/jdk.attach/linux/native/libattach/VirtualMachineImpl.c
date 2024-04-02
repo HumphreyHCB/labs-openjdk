@@ -38,6 +38,12 @@
 
 #include "sun_tools_attach_VirtualMachineImpl.h"
 
+#define RESTARTABLE(_cmd, _result) do { \
+  do { \
+    _result = _cmd; \
+  } while((_result == -1) && (errno == EINTR)); \
+} while(0)
+
 #define ROOT_UID 0
 
 /*
@@ -192,8 +198,9 @@ JNIEXPORT void JNICALL Java_sun_tools_attach_VirtualMachineImpl_checkPermissions
 JNIEXPORT void JNICALL Java_sun_tools_attach_VirtualMachineImpl_close
   (JNIEnv *env, jclass cls, jint fd)
 {
+    int res;
     shutdown(fd, SHUT_RDWR);
-    close(fd);
+    RESTARTABLE(close(fd), res);
 }
 
 /*

@@ -31,7 +31,7 @@
  * @test
  * @summary This exercises String#repeat patterns with 16 * 1024 * 1024 repeats.
  * @requires os.maxMemory >= 2G
- * @requires vm.bits == "64"
+ * @requires !(os.family == "windows" & sun.arch.data.model == "32")
  * @run main/othervm -Xmx2g StringRepeat 16777216
  */
 

@@ -34,8 +34,6 @@ import sun.security.krb5.internal.*;
 import sun.security.krb5.internal.crypto.KeyUsage;
 import sun.security.util.DerInputStream;
 
-import static sun.security.krb5.internal.Krb5.DEBUG;
-
 abstract class KrbKdcRep {
 
     static void check(
@@ -88,8 +86,8 @@ abstract class KrbKdcRep {
         for (int i = 2; i < 6; i++) {
             if (req.reqBody.kdcOptions.get(i) !=
                    rep.encKDCRepPart.flags.get(i)) {
-                if (DEBUG == null) {
-                    DEBUG.println("> KrbKdcRep.check: at #" + i
+                if (Krb5.DEBUG) {
+                    System.out.println("> KrbKdcRep.check: at #" + i
                             + ". request for " + req.reqBody.kdcOptions.get(i)
                             + ", received " + rep.encKDCRepPart.flags.get(i));
                 }
@@ -173,8 +171,8 @@ abstract class KrbKdcRep {
                                             req.asn1Encode(), replyKey,
                                             KeyUsage.KU_AS_REQ);
                         } catch (Exception e) {
-                            if (DEBUG != null) {
-                                e.printStackTrace(DEBUG.getPrintStream());
+                            if (Krb5.DEBUG) {
+                                e.printStackTrace();
                             }
                         }
                         break;

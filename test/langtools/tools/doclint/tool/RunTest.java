@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -188,8 +188,12 @@ public class RunTest {
     }
 
     JavaFileObject createFile(String name, final String body) {
-        return SimpleJavaFileObject.forSource(URI.create(name),
-                                              body);
+        return new SimpleJavaFileObject(URI.create(name), JavaFileObject.Kind.SOURCE) {
+            @Override
+            public CharSequence getCharContent(boolean ignoreEncodingErrors) throws IOException {
+                return body;
+            }
+        };
     }
 
     void error(String msg) {

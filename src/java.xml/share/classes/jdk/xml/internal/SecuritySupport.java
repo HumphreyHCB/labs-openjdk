@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -387,21 +387,20 @@ public class SecuritySupport {
     }
 
     /**
-     * Strips off path from a URI or file path.
+     * Strip off path from an URI
      *
-     * @param input a URI or file path
+     * @param uri an URI with full path
      * @return the file name only
      */
-    public static String sanitizePath(String input) {
-        if (input == null) {
+    public static String sanitizePath(String uri) {
+        if (uri == null) {
             return "";
         }
-        input = input.replace('\\', '/');
-        int i = input.lastIndexOf('/');
+        int i = uri.lastIndexOf("/");
         if (i > 0) {
-            return input.substring(i+1);
+            return uri.substring(i+1, uri.length());
         }
-        return input;
+        return "";
     }
 
     /**

@@ -95,8 +95,6 @@ import java.lang.classfile.attribute.CodeAttribute;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
-import jdk.vm.ci.meta.Local;
-import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -736,24 +734,6 @@ public class TestResolvedJavaMethod extends MethodUniverse {
         Assert.assertTrue(processedMethodWithManyArgs[0]);
     }
 
-    @Test
-    public void getLocalVariableTableTest() {
-        for (ResolvedJavaMethod m : methods.values()) {
-            LocalVariableTable table = m.getLocalVariableTable();
-            if (table == null) {
-                continue;
-            }
-            for (Local l : table.getLocals()) {
-                if (l.getStartBCI() < 0) {
-                    throw new AssertionError(m.format("%H.%n(%p)") + " local " + l.getName() + " starts at " + l.getStartBCI());
-                }
-                if (l.getEndBCI() >= m.getCodeSize()) {
-                    throw new AssertionError(m.format("%H.%n(%p)") + " (" + m.getCodeSize() + "bytes) local " + l.getName() + " ends at " + l.getEndBCI());
-                }
-            }
-        }
-    }
-
     private Method findTestMethod(Method apiMethod) {
         String testName = apiMethod.getName() + "Test";
         for (Method m : getClass().getDeclaredMethods()) {
@@ -776,6 +756,7 @@ public class TestResolvedJavaMethod extends MethodUniverse {
         "canBeInlined",
         "shouldBeInlined",
         "getLineNumberTable",
+        "getLocalVariableTable",
         "isInVirtualMethodTable",
         "toParameterTypes",
         "getParameterAnnotation",

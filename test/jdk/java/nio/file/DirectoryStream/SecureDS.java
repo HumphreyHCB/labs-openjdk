@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,7 @@ import java.io.IOException;
 import java.util.*;
 
 public class SecureDS {
-    static boolean supportsSymbolicLinks;
+    static boolean supportsLinks;
 
     public static void main(String[] args) throws IOException {
         Path dir = TestUtil.createTemporaryDirectory();
@@ -52,7 +52,7 @@ public class SecureDS {
                 return;
             }
 
-            supportsSymbolicLinks = TestUtil.supportsSymbolicLinks(dir);
+            supportsLinks = TestUtil.supportsLinks(dir);
 
             // run tests
             doBasicTests(dir);
@@ -76,11 +76,11 @@ public class SecureDS {
         createDirectory(dir1.resolve(dirEntry));
         // myfilelink -> myfile
         Path link1Entry = Paths.get("myfilelink");
-        if (supportsSymbolicLinks)
+        if (supportsLinks)
             createSymbolicLink(dir1.resolve(link1Entry), fileEntry);
         // mydirlink -> mydir
         Path link2Entry = Paths.get("mydirlink");
-        if (supportsSymbolicLinks)
+        if (supportsLinks)
             createSymbolicLink(dir1.resolve(link2Entry), dirEntry);
 
         // open directory and then move it so that it is no longer accessible
@@ -92,7 +92,7 @@ public class SecureDS {
         // Test: iterate over all entries
         int count = 0;
         for (Path entry: stream) { count++; }
-        assertTrue(count == (supportsSymbolicLinks ? 4 : 2));
+        assertTrue(count == (supportsLinks ? 4 : 2));
 
         // Test: getFileAttributeView to access directory's attributes
         assertTrue(stream
@@ -117,7 +117,7 @@ public class SecureDS {
             .getFileAttributeView(dirEntry, BasicFileAttributeView.class, NOFOLLOW_LINKS)
                 .readAttributes()
                     .isDirectory());
-        if (supportsSymbolicLinks) {
+        if (supportsLinks) {
             assertTrue(stream
                 .getFileAttributeView(link1Entry, BasicFileAttributeView.class)
                     .readAttributes()
@@ -139,7 +139,7 @@ public class SecureDS {
         // Test: newByteChannel
         Set<StandardOpenOption> opts = Collections.emptySet();
         stream.newByteChannel(fileEntry, opts).close();
-        if (supportsSymbolicLinks) {
+        if (supportsLinks) {
             stream.newByteChannel(link1Entry, opts).close();
             try {
                 Set<OpenOption> mixed = new HashSet<>();
@@ -153,7 +153,7 @@ public class SecureDS {
         // Test: newDirectoryStream
         stream.newDirectoryStream(dirEntry).close();
         stream.newDirectoryStream(dirEntry, LinkOption.NOFOLLOW_LINKS).close();
-        if (supportsSymbolicLinks) {
+        if (supportsLinks) {
             stream.newDirectoryStream(link2Entry).close();
             try {
                 stream.newDirectoryStream(link2Entry, LinkOption.NOFOLLOW_LINKS)
@@ -163,7 +163,7 @@ public class SecureDS {
         }
 
         // Test: delete
-        if (supportsSymbolicLinks) {
+        if (supportsLinks) {
             stream.deleteFile(link1Entry);
             stream.deleteFile(link2Entry);
         }
@@ -186,7 +186,7 @@ public class SecureDS {
         Path dirEntry = Paths.get("mydir");
         createDirectory(dir1.resolve(dirEntry));
         Path linkEntry = Paths.get("mylink");
-        if (supportsSymbolicLinks)
+        if (supportsLinks)
             createSymbolicLink(dir1.resolve(linkEntry), Paths.get("missing"));
 
         // target name
@@ -211,7 +211,7 @@ public class SecureDS {
         stream2.deleteDirectory(target);
 
         // Test: move dir1/mylink -> dir2/newfile
-        if (supportsSymbolicLinks) {
+        if (supportsLinks) {
             stream1.move(linkEntry, stream2, target);
             assertTrue(isSymbolicLink(dir2.resolve(target)));
             stream2.deleteFile(target);

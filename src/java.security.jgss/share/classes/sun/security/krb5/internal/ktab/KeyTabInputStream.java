@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,8 +39,6 @@ import sun.security.krb5.internal.util.KrbDataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-import static sun.security.krb5.internal.Krb5.DEBUG;
-
 /**
  * This class implements a buffered input stream. It is used for parsing key table
  * data to memory.
@@ -50,6 +48,7 @@ import static sun.security.krb5.internal.Krb5.DEBUG;
  */
 public class KeyTabInputStream extends KrbDataInputStream implements KeyTabConstants {
 
+    boolean DEBUG = Krb5.DEBUG;
     int index;
 
     public KeyTabInputStream(InputStream is) {
@@ -152,8 +151,8 @@ public class KeyTabInputStream extends KrbDataInputStream implements KeyTabConst
         read(bytes, 0, length);
         index -= length;
         name = new String(bytes);
-        if (DEBUG != null) {
-            DEBUG.println(">>> KeyTabInputStream, readName(): " + name);
+        if (DEBUG) {
+            System.out.println(">>> KeyTabInputStream, readName(): " + name);
         }
         return name;
     }

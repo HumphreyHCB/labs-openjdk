@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,6 @@ import javax.security.auth.spi.*;
 import sun.security.krb5.*;
 import sun.security.jgss.krb5.Krb5Util;
 import sun.security.krb5.Credentials;
-import sun.security.util.Debug;
 import sun.security.util.HexDumpEncoder;
 import static sun.security.util.ResourcesMgr.getAuthResourceString;
 
@@ -365,8 +364,6 @@ import static sun.security.util.ResourcesMgr.getAuthResourceString;
  * </blockquote>
  *
  * @author Ram Marti
- *
- * @since 1.4
  */
 
 public class Krb5LoginModule implements LoginModule {
@@ -378,8 +375,7 @@ public class Krb5LoginModule implements LoginModule {
     private Map<String, ?> options;
 
     // configurable option
-    private Debug debug = null;
-
+    private boolean debug = false;
     private boolean storeKey = false;
     private boolean doNotPrompt = false;
     private boolean useTicketCache = false;
@@ -460,7 +456,7 @@ public class Krb5LoginModule implements LoginModule {
 
         // initialize any configured options
 
-        debug = Debug.of("krb5loginmodule", (String)options.get("debug"));
+        debug = "true".equalsIgnoreCase((String)options.get("debug"));
         storeKey = "true".equalsIgnoreCase((String)options.get("storeKey"));
         doNotPrompt = "true".equalsIgnoreCase((String)options.get
                                               ("doNotPrompt"));
@@ -497,8 +493,8 @@ public class Krb5LoginModule implements LoginModule {
             "true".equalsIgnoreCase((String)options.get("storePass"));
         clearPass =
             "true".equalsIgnoreCase((String)options.get("clearPass"));
-        if (debug != null) {
-            debug.println("Debug is " + (debug != null)
+        if (debug) {
+            System.out.print("Debug is  " + debug
                              + " storeKey " + storeKey
                              + " useTicketCache " + useTicketCache
                              + " useKeyTab " + useKeyTab
@@ -531,8 +527,8 @@ public class Krb5LoginModule implements LoginModule {
 
         if (refreshKrb5Config) {
             try {
-                if (debug != null) {
-                    debug.println("Refreshing Kerberos configuration");
+                if (debug) {
+                    System.out.println("Refreshing Kerberos configuration");
                 }
                 sun.security.krb5.Config.refresh();
             } catch (KrbException ke) {
@@ -560,8 +556,8 @@ public class Krb5LoginModule implements LoginModule {
         if (tryFirstPass) {
             try {
                 attemptAuthentication(true);
-                if (debug != null)
-                    debug.println("\t\t[Krb5LoginModule] " +
+                if (debug)
+                    System.out.println("\t\t[Krb5LoginModule] " +
                                        "authentication succeeded");
                 succeeded = true;
                 cleanState();
@@ -569,8 +565,8 @@ public class Krb5LoginModule implements LoginModule {
             } catch (LoginException le) {
                 // authentication failed -- try again below by prompting
                 cleanState();
-                if (debug != null) {
-                    debug.println("\t\t[Krb5LoginModule] " +
+                if (debug) {
+                    System.out.println("\t\t[Krb5LoginModule] " +
                                        "tryFirstPass failed with:" +
                                        le.getMessage());
                 }
@@ -583,8 +579,8 @@ public class Krb5LoginModule implements LoginModule {
                 return true;
             } catch (LoginException e) {
                 // authentication failed -- clean out state
-                if (debug != null) {
-                    debug.println("\t\t[Krb5LoginModule] " +
+                if (debug) {
+                    System.out.println("\t\t[Krb5LoginModule] " +
                                        "authentication failed \n" +
                                        e.getMessage());
                 }
@@ -604,8 +600,8 @@ public class Krb5LoginModule implements LoginModule {
             return true;
         } catch (LoginException e) {
             // authentication failed -- clean out state
-            if (debug != null) {
-                debug.println("\t\t[Krb5LoginModule] " +
+            if (debug) {
+                System.out.println("\t\t[Krb5LoginModule] " +
                                    "authentication failed \n" +
                                    e.getMessage());
             }
@@ -643,8 +639,8 @@ public class Krb5LoginModule implements LoginModule {
         try {
             if (useTicketCache) {
                 // ticketCacheName == null implies the default cache
-                if (debug != null)
-                    debug.println("Acquire TGT from Cache");
+                if (debug)
+                    System.out.println("Acquire TGT from Cache");
                 cred  = Credentials.acquireTGTFromCache
                     (principal, ticketCacheName);
 
@@ -660,8 +656,8 @@ public class Krb5LoginModule implements LoginModule {
                     if (!isCurrent(cred)) {
                         // credentials have expired
                         cred = null;
-                        if (debug != null)
-                            debug.println("Credentials are" +
+                        if (debug)
+                            System.out.println("Credentials are" +
                                     " no longer valid");
                     }
                 }
@@ -674,10 +670,10 @@ public class Krb5LoginModule implements LoginModule {
                                 : cred.getClient();
                    }
                 }
-                if (debug != null) {
-                    debug.println("Principal is " + principal);
+                if (debug) {
+                    System.out.println("Principal is " + principal);
                     if (cred == null) {
-                        debug.println
+                        System.out.println
                             ("null credentials from Ticket Cache");
                     }
                 }
@@ -731,8 +727,8 @@ public class Krb5LoginModule implements LoginModule {
                         if (Krb5Util.keysFromJavaxKeyTab(ktab, principal).length
                                 == 0) {
                             ktab = null;
-                            if (debug != null) {
-                                debug.println
+                            if (debug) {
+                                System.out.println
                                     ("Key for the principal " +
                                      principal  +
                                      " not available in " +
@@ -767,14 +763,14 @@ public class Krb5LoginModule implements LoginModule {
                 }
                 builder.destroy();
 
-                if (debug != null) {
-                    debug.println("principal is " + principal);
+                if (debug) {
+                    System.out.println("principal is " + principal);
                     HexDumpEncoder hd = new HexDumpEncoder();
                     if (ktab != null) {
-                        debug.println("Will use keytab");
+                        System.out.println("Will use keytab");
                     } else if (storeKey) {
                         for (int i = 0; i < encKeys.length; i++) {
-                            debug.println("EncryptionKey: keyType=" +
+                            System.out.println("EncryptionKey: keyType=" +
                                 encKeys[i].getEType() +
                                 " keyBytes (hex dump)=" +
                                 hd.encodeBuffer(encKeys[i].getBytes()));
@@ -802,13 +798,19 @@ public class Krb5LoginModule implements LoginModule {
         if (getPasswdFromSharedState) {
             // use the name saved by the first module in the stack
             username = (String)sharedState.get(NAME);
-            if (debug != null) {
-                debug.println
-                        ("username from shared state is " + username + "\n");
+            if (debug) {
+                System.out.println
+                    ("username from shared state is " + username + "\n");
             }
             if (username == null) {
+                System.out.println
+                    ("username from shared state is null\n");
                 throw new LoginException
                     ("Username can not be obtained from sharedstate ");
+            }
+            if (debug) {
+                System.out.println
+                    ("username from shared state is " + username + "\n");
             }
             if (username != null && username.length() > 0) {
                 krb5PrincName.insert(0, username);
@@ -859,15 +861,15 @@ public class Krb5LoginModule implements LoginModule {
             // use the password saved by the first module in the stack
             password = (char[])sharedState.get(PWD);
             if (password == null) {
-                if (debug != null) {
-                    debug.println
+                if (debug) {
+                    System.out.println
                         ("Password from shared state is null");
                 }
                 throw new LoginException
                     ("Password can not be obtained from sharedstate ");
             }
-            if (debug != null) {
-                debug.println
+            if (debug) {
+                System.out.println
                     ("password is " + new String(password));
             }
             return;
@@ -907,11 +909,11 @@ public class Krb5LoginModule implements LoginModule {
                 for (int i = 0; i < tmpPassword.length; i++)
                     tmpPassword[i] = ' ';
                 tmpPassword = null;
-                if (debug != null) {
-                    debug.println("\t\t[Krb5LoginModule] " +
+                if (debug) {
+                    System.out.println("\t\t[Krb5LoginModule] " +
                                        "user entered username: " +
                                        krb5PrincName);
-                    debug.println();
+                    System.out.println();
                 }
             } catch (java.io.IOException ioe) {
                 throw new LoginException(ioe.getMessage());
@@ -1004,12 +1006,12 @@ public class Krb5LoginModule implements LoginModule {
                 throw new RefreshFailedException("This ticket is past "
                                              + "its last renewal time.");
             lcreds = creds.renew();
-            if (debug != null)
-                debug.println("Renewed Kerberos Ticket");
+            if (debug)
+                System.out.println("Renewed Kerberos Ticket");
         } catch (Exception e) {
             lcreds = null;
-            if (debug != null)
-                debug.println("Ticket could not be renewed : "
+            if (debug)
+                System.out.println("Ticket could not be renewed : "
                                 + e.getMessage());
         }
         return lcreds;
@@ -1127,10 +1129,10 @@ public class Krb5LoginModule implements LoginModule {
                         }
                         encKeys[i].destroy();
                         encKeys[i] = null;
-                        if (debug != null) {
-                            debug.println("Added server's key"
+                        if (debug) {
+                            System.out.println("Added server's key"
                                             + kerbKeys[i]);
-                            debug.println("\t\t[Krb5LoginModule] " +
+                            System.out.println("\t\t[Krb5LoginModule] " +
                                            "added Krb5Principal  " +
                                            kerbClientPrinc.toString()
                                            + " to Subject");
@@ -1140,8 +1142,8 @@ public class Krb5LoginModule implements LoginModule {
             }
         }
         commitSucceeded = true;
-        if (debug != null)
-            debug.println("Commit Succeeded \n");
+        if (debug)
+            System.out.println("Commit Succeeded \n");
         return true;
     }
 
@@ -1190,8 +1192,8 @@ public class Krb5LoginModule implements LoginModule {
      */
     public boolean logout() throws LoginException {
 
-        if (debug != null) {
-            debug.println("\t\t[Krb5LoginModule]: " +
+        if (debug) {
+            System.out.println("\t\t[Krb5LoginModule]: " +
                 "Entering logout");
         }
 
@@ -1218,8 +1220,8 @@ public class Krb5LoginModule implements LoginModule {
 
         succeeded = false;
         commitSucceeded = false;
-        if (debug != null) {
-            debug.println("\t\t[Krb5LoginModule]: " +
+        if (debug) {
+            System.out.println("\t\t[Krb5LoginModule]: " +
                                "logged out Subject");
         }
         return true;

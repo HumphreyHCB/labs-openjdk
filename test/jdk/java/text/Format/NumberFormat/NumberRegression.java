@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,14 +30,13 @@
  * 4125885 4134034 4134300 4140009 4141750 4145457 4147295 4147706 4162198
  * 4162852 4167494 4170798 4176114 4179818 4185761 4212072 4212073 4216742
  * 4217661 4243011 4243108 4330377 4233840 4241880 4833877 8008577 8227313
- * 8174269
  * @summary Regression tests for NumberFormat and associated classes
  * @library /java/text/testlib
  * @build HexDumpReader TestUtils
  * @modules java.base/sun.util.resources
  *          jdk.localedata
  * @compile -XDignore.symbol.file NumberRegression.java
- * @run junit NumberRegression
+ * @run junit/othervm -Djava.locale.providers=COMPAT,SPI NumberRegression
  */
 
 /*
@@ -278,11 +277,11 @@ public class NumberRegression {
         System.out.println("nf toPattern2: " + ((DecimalFormat)nf).toPattern());
         System.out.println("nf toLocPattern2: " + ((DecimalFormat)nf).toLocalizedPattern());
         String buffer = nf.format(1234);
-        if (!buffer.equals("1234,00\u00a0"))
-            fail("nf : " + buffer); // Expect 1234,00\u00a0
+        if (!buffer.equals("1\u00a0234,00"))
+            fail("nf : " + buffer); // Expect 1 234,00
         buffer = nf.format(-1234);
-        if (!buffer.equals("(1234,00\u00a0)"))
-            fail("nf : " + buffer); // Expect (1234,00\u00a0)
+        if (!buffer.equals("(1\u00a0234,00)"))
+            fail("nf : " + buffer); // Expect (1 234,00)
 
         // Erroneously prints:
         // 1234,00 ,
@@ -546,10 +545,10 @@ public class NumberRegression {
         String expectedCurrency = "5\u00a0789,98 F";
         String expectedPercent = "-578\u00a0998%";
         */
-        String expectedDefault = "-5\u202f789,988";
-        String expectedCurrency = "5\u202f789,99\u00a0\u20AC";
+        String expectedDefault = "-5\u00a0789,988";
+        String expectedCurrency = "5\u00a0789,99 \u20AC";
         // changed for bug 6547501
-        String expectedPercent = "-578\u202f999\u00a0%";
+        String expectedPercent = "-578\u00a0999 %";
 
         formatter = NumberFormat.getNumberInstance(Locale.FRANCE);
         tempString = formatter.format (-5789.9876);
@@ -600,9 +599,9 @@ public class NumberRegression {
         String expectedPercent = "-578 998%";
     */
         String expectedDefault = "-5\u00a0789,988";
-        String expectedCurrency = "5\u00a0789,99\u00a0$";
+        String expectedCurrency = "5\u00a0789,99 $";
         // changed for bug 6547501
-        String expectedPercent = "-578\u00a0999\u00a0%";
+        String expectedPercent = "-578\u00a0999 %";
 
         formatter = NumberFormat.getNumberInstance(Locale.CANADA_FRENCH);
         tempString = formatter.format (-5789.9876);
@@ -649,8 +648,8 @@ public class NumberRegression {
         String expectedPercent = "-578.998%";
         */
         String expectedDefault = "-5.789,988";
-        String expectedCurrency = "5.789,99\u00a0\u20AC";
-        String expectedPercent = "-578.999\u00a0%";
+        String expectedCurrency = "5.789,99 \u20AC";
+        String expectedPercent = "-578.999%";
 
         formatter = NumberFormat.getNumberInstance(Locale.GERMANY);
         tempString = formatter.format (-5789.9876);
@@ -699,7 +698,7 @@ public class NumberRegression {
         String expectedPercent = "-578.998%";
         */
         String expectedDefault = "-5.789,988";
-        String expectedCurrency = "-5.789,99\u00a0\u20ac";
+        String expectedCurrency = "-\u20AC 5.789,99";
         String expectedPercent = "-578.999%";
 
         formatter = NumberFormat.getNumberInstance(Locale.ITALY);
@@ -1642,13 +1641,12 @@ public class NumberRegression {
                 }
 
                 // Test toLocalizedPattern/applyLocalizedPattern round trip
-// CLDR does not support localized patterns
-//               pat = df.toLocalizedPattern();
-//               f2.applyLocalizedPattern(pat);
-//               if (!df.equals(f2)) {
-//                   fail("FAIL: " + avail[i] + " -> localized \"" + pat +
-//                         "\" -> \"" + f2.toPattern() + '"');
-//               }
+                pat = df.toLocalizedPattern();
+                f2.applyLocalizedPattern(pat);
+                if (!df.equals(f2)) {
+                    fail("FAIL: " + avail[i] + " -> localized \"" + pat +
+                          "\" -> \"" + f2.toPattern() + '"');
+                }
 
                 // Test writeObject/readObject round trip
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();

@@ -46,8 +46,7 @@
  *     Next, debugger obtains from debuggee classID for tested thread class
  *     and threadID as the value of a class static field. Also debugger
  *     suspends the thread before sending the tested command. The tested
- *     thread is waiting to re-enter the object monitor after being
- *     notified during execution of the Object.wait(long) method.
+ *     thread is waiting for the object at this moment.
  *     Then, debugger creates command packet for ThreadReference.CurrenContendedMonitor
  *     command with the found threadID as an argument, writes packet to
  *     the transport channel, and waits for a reply packet.

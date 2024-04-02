@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,8 +39,6 @@ import sun.security.krb5.internal.ccache.*;
 import sun.security.krb5.internal.ktab.*;
 import sun.security.krb5.internal.crypto.EType;
 
-import static sun.security.krb5.internal.Krb5.DEBUG;
-
 /**
  * This class can execute as a command-line tool to list entries in
  * credential cache and key tab.
@@ -56,6 +54,7 @@ public class Klist {
     String name;       // the name of credentials cache and keytable.
     char action;       // actions would be 'c' for credentials cache
     // and 'k' for keytable.
+    private static boolean DEBUG = Krb5.DEBUG;
 
     /**
      * The main program that can be invoked at command line.
@@ -322,8 +321,8 @@ public class Klist {
                 } catch (RealmException e) {
                     System.out.println("Error reading principal from "+
                                        "the entry.");
-                    if (DEBUG != null) {
-                        e.printStackTrace(DEBUG.getPrintStream());
+                    if (DEBUG) {
+                        e.printStackTrace();
                     }
                     return -1;
                 }

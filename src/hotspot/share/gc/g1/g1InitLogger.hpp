@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,9 +29,9 @@
 
 class G1InitLogger : public GCInitLogger {
  protected:
-  void print_heap() override;
-  void print_workers() override;
-  void print_gc_specific() override;
+  virtual void print_heap();
+  virtual void print_workers();
+  virtual void print_gc_specific();
  public:
   static void print();
 };

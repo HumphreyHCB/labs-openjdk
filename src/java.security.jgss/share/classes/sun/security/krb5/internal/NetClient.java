@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,8 +34,6 @@ package sun.security.krb5.internal;
 import java.io.*;
 import java.net.*;
 import sun.security.util.IOUtils;
-
-import static sun.security.krb5.internal.Krb5.DEBUG;
 
 public abstract class NetClient implements AutoCloseable {
     public static NetClient getInstance(String protocol, String hostname, int port,
@@ -83,21 +81,21 @@ class TCPClient extends NetClient {
         int count = readFully(lenField, 4);
 
         if (count != 4) {
-            if (DEBUG != null) {
-                DEBUG.println(
+            if (Krb5.DEBUG) {
+                System.out.println(
                     ">>>DEBUG: TCPClient could not read length field");
             }
             return null;
         }
 
         int len = networkByteOrderToInt(lenField, 0, 4);
-        if (DEBUG != null) {
-            DEBUG.println(
+        if (Krb5.DEBUG) {
+            System.out.println(
                 ">>>DEBUG: TCPClient reading " + len + " bytes");
         }
         if (len <= 0) {
-            if (DEBUG != null) {
-                DEBUG.println(
+            if (Krb5.DEBUG) {
+                System.out.println(
                     ">>>DEBUG: TCPClient zero or negative length field: "+len);
             }
             return null;
@@ -106,8 +104,8 @@ class TCPClient extends NetClient {
         try {
             return IOUtils.readExactlyNBytes(in, len);
         } catch (IOException ioe) {
-            if (DEBUG != null) {
-                DEBUG.println(
+            if (Krb5.DEBUG) {
+                System.out.println(
                     ">>>DEBUG: TCPClient could not read complete packet (" +
                     len + "/" + count + ")");
             }

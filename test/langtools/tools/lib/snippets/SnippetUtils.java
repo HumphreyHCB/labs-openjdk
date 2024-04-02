@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
 package snippets;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;
@@ -34,6 +35,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -555,7 +557,11 @@ public class SnippetUtils {
                         }
                     }""".formatted(body);
         };
-        JavaFileObject fo = SimpleJavaFileObject.forSource(uri, compUnit);
+        JavaFileObject fo = new SimpleJavaFileObject(uri, JavaFileObject.Kind.SOURCE) {
+            public CharSequence getCharContent(boolean ignoreEncodingErrors) {
+                return compUnit;
+            }
+        };
 
         JavaFileManager fm = compiler.getStandardFileManager(dl, null, null);
 

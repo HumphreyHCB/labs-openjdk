@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,12 +39,12 @@ import java.util.*;
 
 public class SBC {
 
-    static boolean supportsSymbolicLinks;
+    static boolean supportsLinks;
 
     public static void main(String[] args) throws Exception {
         Path dir = TestUtil.createTemporaryDirectory();
         try {
-            supportsSymbolicLinks = TestUtil.supportsSymbolicLinks(dir);
+            supportsLinks = TestUtil.supportsLinks(dir);
 
             // open options
             createTests(dir);
@@ -84,7 +84,7 @@ public class SBC {
             Files.newByteChannel(file, CREATE, WRITE).close();
 
             // create file where existing file is a sym link
-            if (supportsSymbolicLinks) {
+            if (supportsLinks) {
                 Path link = Files.createSymbolicLink(dir.resolve("link"), file);
                 try {
                     // file already exists
@@ -121,7 +121,7 @@ public class SBC {
             } catch (FileAlreadyExistsException x) { }
 
             // create should fail
-            if (supportsSymbolicLinks) {
+            if (supportsLinks) {
                 Path link = dir.resolve("link");
                 Path target = dir.resolve("thisDoesNotExist");
                 Files.createSymbolicLink(link, target);
@@ -224,7 +224,7 @@ public class SBC {
 
     // test NOFOLLOW_LINKS option
     static void noFollowLinksTests(Path dir) throws Exception {
-        if (!supportsSymbolicLinks)
+        if (!supportsLinks)
             return;
         Path file = Files.createFile(dir.resolve("foo"));
         try {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.security.*;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.ECParameterSpec;
+import java.security.spec.ECPoint;
 import java.security.spec.InvalidParameterSpecException;
 import java.util.Arrays;
 import java.util.Optional;
@@ -36,7 +37,7 @@ import java.util.Optional;
 import sun.security.jca.JCAUtil;
 import sun.security.util.ECUtil;
 import sun.security.util.math.*;
-
+import sun.security.ec.point.*;
 import static sun.security.util.SecurityProviderConstants.DEF_EC_KEY_SIZE;
 import static sun.security.ec.ECOperations.IntermediateValueException;
 
@@ -73,7 +74,7 @@ public final class ECKeyPairGenerator extends KeyPairGeneratorSpi {
     public void initialize(int keySize, SecureRandom random) {
 
         checkKeySize(keySize);
-        this.params = ECUtil.getECParameterSpec(keySize);
+        this.params = ECUtil.getECParameterSpec(null, keySize);
         if (params == null) {
             throw new InvalidParameterException(
                 "No EC parameters available for key size " + keySize + " bits");
@@ -90,14 +91,14 @@ public final class ECKeyPairGenerator extends KeyPairGeneratorSpi {
 
         if (params instanceof ECParameterSpec) {
             ECParameterSpec ecParams = (ECParameterSpec) params;
-            ecSpec = ECUtil.getECParameterSpec(ecParams);
+            ecSpec = ECUtil.getECParameterSpec(null, ecParams);
             if (ecSpec == null) {
                 throw new InvalidAlgorithmParameterException(
                     "Curve not supported: " + params);
             }
         } else if (params instanceof ECGenParameterSpec) {
             String name = ((ECGenParameterSpec) params).getName();
-            ecSpec = ECUtil.getECParameterSpec(name);
+            ecSpec = ECUtil.getECParameterSpec(null, name);
             if (ecSpec == null) {
                 throw new InvalidAlgorithmParameterException(
                     "Unknown curve name: " + name);
@@ -119,7 +120,7 @@ public final class ECKeyPairGenerator extends KeyPairGeneratorSpi {
         throws InvalidAlgorithmParameterException {
 
         // Check if ecSpec is a valid curve
-        AlgorithmParameters ecParams = ECUtil.getECParameters();
+        AlgorithmParameters ecParams = ECUtil.getECParameters(null);
         try {
             ecParams.init(ecSpec);
         } catch (InvalidParameterSpecException ex) {

@@ -33,8 +33,13 @@ public class T8295024 {
         }
         """;
 
-    private static final JavaFileObject FILE = SimpleJavaFileObject.forSource(
-            URI.create("string:///Cyclic.java"), SOURCE);
+    private static final SimpleJavaFileObject FILE = new SimpleJavaFileObject(
+      URI.create("string:///Cyclic.java"), JavaFileObject.Kind.SOURCE) {
+        @Override
+        public String getCharContent(boolean ignoreEncodingErrors) {
+            return  SOURCE;
+        }
+    };
 
     public static void main(String[] args) throws Exception {
 
@@ -42,7 +47,7 @@ public class T8295024 {
         final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         final StringWriter output = new StringWriter();
         final Iterable<String> options = Collections.singleton("-XDrawDiagnostics");
-        final Iterable<JavaFileObject> files = Collections.singleton(FILE);
+        final Iterable<SimpleJavaFileObject> files = Collections.singleton(FILE);
         for (int i = 0; i < NUM_RUNS; i++)
             compiler.getTask(output, null, null, options, null, files).call();
 

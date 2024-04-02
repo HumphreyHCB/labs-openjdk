@@ -33,7 +33,8 @@ import javax.lang.model.element.Element;
 import com.sun.source.doctree.DocTree;
 
 import jdk.javadoc.internal.doclets.formats.html.Navigation.PageMode;
-import jdk.javadoc.internal.doclets.formats.html.markup.ContentBuilder;
+import jdk.javadoc.internal.doclets.formats.html.markup.HtmlAttr;
+import jdk.javadoc.internal.doclets.formats.html.markup.HtmlId;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
 import jdk.javadoc.internal.doclets.formats.html.markup.Text;
@@ -79,17 +80,21 @@ public class PreviewListWriter extends SummaryListWriter<PreviewAPIListBuilder> 
     protected void addContentSelectors(Content target) {
         Set<PreviewAPIListBuilder.JEP> jeps = builder.getJEPs();
         if (!jeps.isEmpty()) {
-            int index = 1;
+            int index = 0;
             target.add(HtmlTree.P(contents.getContent("doclet.Preview_API_Checkbox_Label")));
-            Content list = HtmlTree.UL(HtmlStyle.previewFeatureList).addStyle(HtmlStyle.checkboxes);
+            Content list = HtmlTree.UL(HtmlStyle.previewFeatureList);
             for (var jep : jeps) {
-                String jepUrl = resources.getText("doclet.Preview_JEP_URL", String.valueOf(jep.number()));
-                Content label = new ContentBuilder(Text.of(jep.number() + ": "))
-                        .add(HtmlTree.A(jepUrl, Text.of(jep.title() + " (" + jep.status() + ")")));
-                list.add(HtmlTree.LI(getCheckbox(label, String.valueOf(index++), "feature-")));
+                index++;
+                HtmlId htmlId = HtmlId.of("feature-" + index);
+                String jepUrl = resources.getText("doclet.Preview_JEP_URL", jep.number());
+                list.add(HtmlTree.LI(HtmlTree.LABEL(htmlId.name(),
+                                HtmlTree.INPUT(HtmlAttr.InputType.CHECKBOX, htmlId)
+                                        .put(HtmlAttr.CHECKED, "")
+                                        .put(HtmlAttr.ONCLICK,
+                                                "toggleGlobal(this, '" + index + "', 3)"))
+                        .add(HtmlTree.SPAN(Text.of(jep.number() + ": "))
+                                .add(HtmlTree.A(jepUrl, Text.of(jep.title() + " (" + jep.status() + ")"))))));
             }
-            Content label = contents.getContent("doclet.Preview_API_Checkbox_Toggle_All");
-            list.add(HtmlTree.LI(getCheckbox(label, ID_ALL, "feature-")));
             target.add(list);
         }
     }
@@ -108,6 +113,7 @@ public class PreviewListWriter extends SummaryListWriter<PreviewAPIListBuilder> 
     protected void addTableTabs(Table<Element> table, String headingKey) {
         table.setGridStyle(HtmlStyle.threeColumnSummary)
                 .setDefaultTab(getTableCaption(headingKey))
+                .setAlwaysShowDefaultTab(true)
                 .setRenderTabs(false);
         for (PreviewAPIListBuilder.JEP jep : builder.getJEPs()) {
             table.addTab(Text.EMPTY, element -> jep == builder.getJEP(element));
@@ -116,7 +122,7 @@ public class PreviewListWriter extends SummaryListWriter<PreviewAPIListBuilder> 
 
     @Override
     protected Content getExtraContent(Element element) {
-        PreviewAPIListBuilder.JEP jep = builder.getJEP(element);
+        PreviewAPIListBuilder.JEP jep = configuration.previewAPIListBuilder.getJEP(element);
         return jep == null ? Text.EMPTY : Text.of(jep.title());
     }
 

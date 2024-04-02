@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,8 +70,8 @@ public class CopyAndMove {
             FileStore fileStore1 = getFileStore(dir1);
             printDirInfo("dir1", dir1, fileStore1);
             testPosixAttributes = fileStore1.supportsFileAttributeView("posix");
-            testCopyFileToFile(dir1, dir1, TestUtil.supportsSymbolicLinks(dir1));
-            testMove(dir1, dir1, TestUtil.supportsSymbolicLinks(dir1));
+            testCopyFileToFile(dir1, dir1, TestUtil.supportsLinks(dir1));
+            testMove(dir1, dir1, TestUtil.supportsLinks(dir1));
 
             // Use test.dir to define second directory if possible as it might
             // be a different volume/file system and so improve test coverage.
@@ -87,8 +87,8 @@ public class CopyAndMove {
                 try {
                     testPosixAttributes =
                         fileStore2.supportsFileAttributeView("posix");
-                    testCopyFileToFile(dir2, dir2, TestUtil.supportsSymbolicLinks(dir2));
-                    testMove(dir2, dir2, TestUtil.supportsSymbolicLinks(dir2));
+                    testCopyFileToFile(dir2, dir2, TestUtil.supportsLinks(dir2));
+                    testMove(dir2, dir2, TestUtil.supportsLinks(dir2));
                 } finally {
                     TestUtil.removeAll(dir2);
                 }
@@ -101,7 +101,7 @@ public class CopyAndMove {
                     dir2 = TestUtil.createTemporaryDirectory(testDir);
                 }
                 boolean testSymbolicLinks =
-                    TestUtil.supportsSymbolicLinks(dir1) && TestUtil.supportsSymbolicLinks(dir2);
+                    TestUtil.supportsLinks(dir1) && TestUtil.supportsLinks(dir2);
                 testPosixAttributes = fileStore1.supportsFileAttributeView("posix") &&
                                       fileStore2.supportsFileAttributeView("posix");
                 testCopyFileToFile(dir1, dir2, testSymbolicLinks);
@@ -309,7 +309,7 @@ public class CopyAndMove {
     /**
      * Tests all possible ways to invoke move
      */
-    static void testMove(Path dir1, Path dir2, boolean supportsSymbolicLinks)
+    static void testMove(Path dir1, Path dir2, boolean supportsLinks)
         throws IOException
     {
         Path source, target, entry;
@@ -531,7 +531,7 @@ public class CopyAndMove {
         /**
          * Test: Move symbolic link to file, target does not exist
          */
-        if (supportsSymbolicLinks) {
+        if (supportsLinks) {
             Path tmp = createSourceFile(dir1);
             source = dir1.resolve("link");
             createSymbolicLink(source, tmp);
@@ -544,7 +544,7 @@ public class CopyAndMove {
         /**
          * Test: Move symbolic link to directory, target does not exist
          */
-        if (supportsSymbolicLinks) {
+        if (supportsLinks) {
             source = dir1.resolve("link");
             createSymbolicLink(source, dir2);
             target = getTargetFile(dir2);
@@ -555,7 +555,7 @@ public class CopyAndMove {
         /**
          * Test: Move broken symbolic link, target does not exists
          */
-        if (supportsSymbolicLinks) {
+        if (supportsLinks) {
             Path tmp = Paths.get("doesnotexist");
             source = dir1.resolve("link");
             createSymbolicLink(source, tmp);
@@ -567,7 +567,7 @@ public class CopyAndMove {
         /**
          * Test: Move symbolic link, target exists
          */
-        if (supportsSymbolicLinks) {
+        if (supportsLinks) {
             source = dir1.resolve("link");
             createSymbolicLink(source, dir2);
             target = getTargetFile(dir2);
@@ -584,7 +584,7 @@ public class CopyAndMove {
         /**
          * Test: Move regular file, target exists
          */
-        if (supportsSymbolicLinks) {
+        if (supportsLinks) {
             source = dir1.resolve("link");
             createSymbolicLink(source, dir2);
             target = getTargetFile(dir2);
@@ -596,7 +596,7 @@ public class CopyAndMove {
         /**
          * Test: move symbolic link, target exists and is empty directory
          */
-        if (supportsSymbolicLinks) {
+        if (supportsLinks) {
             source = dir1.resolve("link");
             createSymbolicLink(source, dir2);
             target = getTargetFile(dir2);
@@ -608,7 +608,7 @@ public class CopyAndMove {
         /**
          * Test: symbolic link, target exists and is non-empty directory
          */
-        if (supportsSymbolicLinks) {
+        if (supportsLinks) {
             source = dir1.resolve("link");
             createSymbolicLink(source, dir2);
             target = getTargetFile(dir2);
@@ -628,7 +628,7 @@ public class CopyAndMove {
         /**
          * Test atomic move of symbolic link (same file store)
          */
-        if (supportsSymbolicLinks) {
+        if (supportsLinks) {
             source = dir1.resolve("link");
             createSymbolicLink(source, dir1);
             target = getTargetFile(dir2);
@@ -743,7 +743,7 @@ public class CopyAndMove {
     /**
      * Tests all possible ways to invoke copy to copy a file to a file
      */
-    static void testCopyFileToFile(Path dir1, Path dir2, boolean supportsSymbolicLinks)
+    static void testCopyFileToFile(Path dir1, Path dir2, boolean supportsLinks)
         throws IOException
     {
         Path source, target, link, entry;
@@ -947,7 +947,7 @@ public class CopyAndMove {
         /**
          * Test: Follow link
          */
-        if (supportsSymbolicLinks) {
+        if (supportsLinks) {
             source = createSourceFile(dir1);
             link = dir1.resolve("link");
             createSymbolicLink(link, source.getFileName());
@@ -960,7 +960,7 @@ public class CopyAndMove {
         /**
          * Test: Copy link (to file)
          */
-        if (supportsSymbolicLinks) {
+        if (supportsLinks) {
             source = createSourceFile(dir1);
             link = dir1.resolve("link");
             createSymbolicLink(link, source);
@@ -973,7 +973,7 @@ public class CopyAndMove {
         /**
          * Test: Copy link (to directory)
          */
-        if (supportsSymbolicLinks) {
+        if (supportsLinks) {
             source = dir1.resolve("mydir");
             createDirectory(source);
             link = dir1.resolve("link");
@@ -987,7 +987,7 @@ public class CopyAndMove {
         /**
          * Test: Copy broken link
          */
-        if (supportsSymbolicLinks) {
+        if (supportsLinks) {
             assertTrue(notExists(source));
             link = dir1.resolve("link");
             createSymbolicLink(link, source);
@@ -999,7 +999,7 @@ public class CopyAndMove {
         /**
          * Test: Copy link to UNC (Windows only)
          */
-        if (supportsSymbolicLinks && Platform.isWindows()) {
+        if (supportsLinks && Platform.isWindows()) {
             Path unc = Paths.get("\\\\rialto\\share\\file");
             link = dir1.resolve("link");
             createSymbolicLink(link, unc);
@@ -1066,7 +1066,7 @@ public class CopyAndMove {
         }
         Path tmpdir = createTempDirectory("blah");
         try {
-            if (TestUtil.supportsSymbolicLinks(tmpdir)) {
+            if (TestUtil.supportsLinks(tmpdir)) {
                 Path link = createSymbolicLink(tmpdir.resolve("link"),
                                                   tmpdir.resolve("target"));
                 try {

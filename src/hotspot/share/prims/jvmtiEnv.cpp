@@ -868,7 +868,12 @@ JvmtiEnv::GetThreadState(jthread thread, jint* thread_state_ptr) {
     // is a virtual thread.
     return err;
   }
-  *thread_state_ptr = JvmtiEnvBase::get_thread_or_vthread_state(thread_oop, java_thread);
+
+  if (java_lang_VirtualThread::is_instance(thread_oop)) {
+    *thread_state_ptr = JvmtiEnvBase::get_vthread_state(thread_oop, java_thread);
+  } else {
+    *thread_state_ptr = JvmtiEnvBase::get_thread_state(thread_oop, java_thread);
+  }
   return JVMTI_ERROR_NONE;
 } /* end GetThreadState */
 

@@ -29,7 +29,6 @@
 #include "gc/shared/taskTerminator.hpp"
 #include "gc/shared/workerThread.hpp"
 #include "gc/shenandoah/shenandoahClosures.inline.hpp"
-#include "gc/shenandoah/shenandoahGenerationType.hpp"
 #include "gc/shenandoah/shenandoahMark.inline.hpp"
 #include "gc/shenandoah/shenandoahOopClosures.inline.hpp"
 #include "gc/shenandoah/shenandoahReferenceProcessor.hpp"
@@ -37,7 +36,6 @@
 #include "gc/shenandoah/shenandoahSTWMark.hpp"
 #include "gc/shenandoah/shenandoahVerifier.hpp"
 
-template<ShenandoahGenerationType GENERATION>
 class ShenandoahInitMarkRootsClosure : public OopClosure {
 private:
   ShenandoahObjToScanQueue* const _queue;
@@ -52,16 +50,14 @@ public:
   void do_oop(oop* p)       { do_oop_work(p); }
 };
 
-template <ShenandoahGenerationType GENERATION>
-ShenandoahInitMarkRootsClosure<GENERATION>::ShenandoahInitMarkRootsClosure(ShenandoahObjToScanQueue* q) :
+ShenandoahInitMarkRootsClosure::ShenandoahInitMarkRootsClosure(ShenandoahObjToScanQueue* q) :
   _queue(q),
   _mark_context(ShenandoahHeap::heap()->marking_context()) {
 }
 
-template <ShenandoahGenerationType GENERATION>
 template <class T>
-void ShenandoahInitMarkRootsClosure<GENERATION>::do_oop_work(T* p) {
-  ShenandoahMark::mark_through_ref<T, GENERATION>(p, _queue, _mark_context, false);
+void ShenandoahInitMarkRootsClosure::do_oop_work(T* p) {
+  ShenandoahMark::mark_through_ref<T>(p, _queue, _mark_context, false);
 }
 
 class ShenandoahSTWMarkTask : public WorkerTask {
@@ -138,7 +134,7 @@ void ShenandoahSTWMark::mark() {
 }
 
 void ShenandoahSTWMark::mark_roots(uint worker_id) {
-  ShenandoahInitMarkRootsClosure<NON_GEN>  init_mark(task_queues()->queue(worker_id));
+  ShenandoahInitMarkRootsClosure  init_mark(task_queues()->queue(worker_id));
   _root_scanner.roots_do(&init_mark, worker_id);
 }
 
@@ -148,6 +144,7 @@ void ShenandoahSTWMark::finish_mark(uint worker_id) {
   ShenandoahReferenceProcessor* rp = ShenandoahHeap::heap()->ref_processor();
   StringDedup::Requests requests;
 
-  mark_loop(worker_id, &_terminator, rp, NON_GEN, false /* not cancellable */,
+  mark_loop(worker_id, &_terminator, rp,
+            false /* not cancellable */,
             ShenandoahStringDedup::is_enabled() ? ALWAYS_DEDUP : NO_DEDUP, &requests);
 }

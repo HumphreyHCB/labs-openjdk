@@ -215,9 +215,11 @@ void VM_CollectForMetadataAllocation::doit() {
   // Check again if the space is available.  Another thread
   // may have similarly failed a metadata allocation and induced
   // a GC that freed space for the allocation.
-  _result = _loader_data->metaspace_non_null()->allocate(_size, _mdtype);
-  if (_result != nullptr) {
-    return;
+  if (!MetadataAllocationFailALot) {
+    _result = _loader_data->metaspace_non_null()->allocate(_size, _mdtype);
+    if (_result != nullptr) {
+      return;
+    }
   }
 
 #if INCLUDE_G1GC

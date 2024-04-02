@@ -405,7 +405,7 @@ void CompilationMemoryStatistic::on_end_compilation() {
   if (env) {
     const char* const failure_reason = env->failure_reason();
     if (failure_reason != nullptr) {
-      result = (strcmp(failure_reason, failure_reason_memlimit()) == 0) ? "oom" : "err";
+      result = (failure_reason == failure_reason_memlimit()) ? "oom" : "err";
     }
   }
 

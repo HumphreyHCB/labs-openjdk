@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,8 +39,6 @@ import jdk.test.whitebox.WhiteBox;
 import jdk.test.lib.classloader.ClassUnloadCommon;
 
 import java.lang.ref.Reference;
-import java.util.List;
-import java.util.Set;
 public class ConstantPoolDependsTest {
     public static WhiteBox wb = WhiteBox.getWhiteBox();
     public static final String MY_TEST = "ConstantPoolDependsTest$c1c";
@@ -80,7 +78,10 @@ public class ConstantPoolDependsTest {
 
     public static void main(String args[]) throws Throwable {
         test();
-        Set<String> aliveClasses = ClassUnloadCommon.triggerUnloading(List.of(MY_TEST, "p2.c2"));
-        ClassUnloadCommon.failIf(!aliveClasses.isEmpty(), "should be unloaded: " + aliveClasses);
+        ClassUnloadCommon.triggerUnloading();  // should unload
+        System.gc();
+        System.out.println("Should unload p2.c2 just now");
+        ClassUnloadCommon.failIf(wb.isClassAlive(MY_TEST), "should be unloaded");
+        ClassUnloadCommon.failIf(wb.isClassAlive("p2.c2"), "should be unloaded");
     }
 }

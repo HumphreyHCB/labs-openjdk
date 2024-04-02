@@ -234,7 +234,7 @@ class DefNewGeneration: public Generation {
   void gc_epilogue(bool full);
 
   // Save the tops for eden, from, and to
-  void record_spaces_top();
+  virtual void record_spaces_top();
 
   // Accessing marks
   void save_marks();

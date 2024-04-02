@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,8 +39,6 @@ import java.util.Arrays;
 import sun.security.util.Password;
 import javax.security.auth.kerberos.KeyTab;
 
-import static sun.security.krb5.internal.Krb5.DEBUG;
-
 /**
  * Kinit tool for obtaining Kerberos v5 tickets.
  *
@@ -50,6 +48,7 @@ import static sun.security.krb5.internal.Krb5.DEBUG;
 public class Kinit {
 
     private KinitOptions options;
+    private static final boolean DEBUG = Krb5.DEBUG;
 
     /**
      * The main method is used to accept user command line input for ticket
@@ -181,8 +180,8 @@ public class Kinit {
             princName = principal.toString();
         }
         KrbAsReqBuilder builder;
-        if (DEBUG != null) {
-            DEBUG.println("Principal is " + principal);
+        if (DEBUG) {
+            System.out.println("Principal is " + principal);
         }
         char[] psswd = options.password;
         boolean useKeytab = options.useKeytabFile();
@@ -195,15 +194,15 @@ public class Kinit {
                 System.out.print("Password for " + princName + ":");
                 System.out.flush();
                 psswd = Password.readPassword(System.in);
-                if (DEBUG != null) {
-                    DEBUG.println(">>> Kinit console input " +
+                if (DEBUG) {
+                    System.out.println(">>> Kinit console input " +
                         new String(psswd));
                 }
             }
             builder = new KrbAsReqBuilder(principal, psswd);
         } else {
-            if (DEBUG != null) {
-                DEBUG.println(">>> Kinit using keytab");
+            if (DEBUG) {
+                System.out.println(">>> Kinit using keytab");
             }
             if (princName == null) {
                 throw new IllegalArgumentException
@@ -211,8 +210,8 @@ public class Kinit {
             }
             String ktabName = options.keytabFileName();
             if (ktabName != null) {
-                if (DEBUG != null) {
-                    DEBUG.println(
+                if (DEBUG) {
+                    System.out.println(
                                        ">>> Kinit keytab file name: " + ktabName);
                 }
             }
@@ -231,15 +230,15 @@ public class Kinit {
             realm = Config.getInstance().getDefaultRealm();
         }
 
-        if (DEBUG != null) {
-            DEBUG.println(">>> Kinit realm name is " + realm);
+        if (DEBUG) {
+            System.out.println(">>> Kinit realm name is " + realm);
         }
 
         PrincipalName sname = PrincipalName.tgsService(realm, realm);
         builder.setTarget(sname);
 
-        if (DEBUG != null) {
-            DEBUG.println(">>> Creating KrbAsReq");
+        if (DEBUG) {
+            System.out.println(">>> Creating KrbAsReq");
         }
 
         if (options.getAddressOption())

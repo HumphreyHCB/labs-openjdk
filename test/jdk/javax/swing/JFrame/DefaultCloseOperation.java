@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 
 /*
@@ -72,26 +73,31 @@ public class DefaultCloseOperation extends JPanel {
     JComboBox<String> dialogCloseOp;
 
     public static void main(String[] args) throws Exception {
-        PassFailJFrame.builder()
+
+        PassFailJFrame passFailJFrame = new PassFailJFrame.Builder()
                 .title("DefaultCloseOperation Manual Test")
                 .instructions(INSTRUCTIONS)
                 .testTimeOut(5)
                 .rows(20)
-                .columns(50)
-                .testUI(DefaultCloseOperation::createUI)
-                .build()
-                .awaitAndCheck();
-    }
+                .columns(70)
+                .build();
 
-    private static JFrame createUI() {
-        DefaultCloseOperation dco = new DefaultCloseOperation();
-        dco.init();
+        SwingUtilities.invokeAndWait(() -> {
+            DefaultCloseOperation dco = new DefaultCloseOperation();
+            dco.init();
 
-        JFrame frame = new JFrame("DefaultCloseOperation");
-        frame.add(dco);
-        frame.setSize(500,200);
+            JFrame frame = new JFrame("DefaultCloseOperation");
+            frame.add(dco);
+            frame.setSize(500,200);
 
-        return frame;
+            PassFailJFrame.addTestWindow(frame);
+            PassFailJFrame
+                    .positionTestWindow(frame, PassFailJFrame.Position.HORIZONTAL);
+
+            frame.setVisible(true);
+        });
+
+        passFailJFrame.awaitAndCheck();
     }
 
     public void init() {

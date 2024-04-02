@@ -503,6 +503,13 @@ void PosixSignals::unblock_error_signals() {
   ::pthread_sigmask(SIG_UNBLOCK, &set, nullptr);
 }
 
+class ErrnoPreserver: public StackObj {
+  const int _saved;
+public:
+  ErrnoPreserver() : _saved(errno) {}
+  ~ErrnoPreserver() { errno = _saved; }
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 // JVM_handle_(linux|aix|bsd)_signal()
 

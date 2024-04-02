@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -114,8 +114,12 @@ public class DocLintTest {
         fm = javac.getStandardFileManager(null, null, null);
         try {
             fm.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(new File(".")));
-            file = SimpleJavaFileObject.forSource(URI.create("Test.java"),
-                                                  code);
+            file = new SimpleJavaFileObject(URI.create("Test.java"), JavaFileObject.Kind.SOURCE) {
+                @Override
+                public CharSequence getCharContent(boolean ignoreEncoding) {
+                    return code;
+                }
+            };
 
             test(Collections.<String>emptyList(),
                     Main.Result.OK,

@@ -148,7 +148,7 @@ public final class ReferencedKeySet<T> extends AbstractSet<T> {
 
     @Override
     public boolean add(T e) {
-        return ReferencedKeyMap.internAddKey(map, e);
+        return intern(e) == null;
     }
 
     @Override

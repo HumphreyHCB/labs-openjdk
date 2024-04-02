@@ -21,8 +21,13 @@
  * questions.
  */
 
-#include "export.h"
 #include "testlib_threads.hpp"
+
+#ifdef _WIN64
+#define EXPORT __declspec(dllexport)
+#else
+#define EXPORT
+#endif
 
 typedef void (*CB_t)(void);
 

@@ -293,10 +293,8 @@ public class CtwRunner {
                 String.format("-XX:ReplayDataFile=replay_%s_%%p.log", phase),
                 // MethodHandle MUST NOT be compiled
                 "-XX:CompileCommand=exclude,java/lang/invoke/MethodHandle.*",
-                "-XX:+IgnoreUnrecognizedVMOptions",
-                // Do not pay extra zapping cost for explicit GC invocations
-                "-XX:-ZapUnusedHeapArea",
                 // Stress* are c2-specific stress flags, so IgnoreUnrecognizedVMOptions is needed
+                "-XX:+IgnoreUnrecognizedVMOptions",
                 "-XX:+StressLCM",
                 "-XX:+StressGCM",
                 "-XX:+StressIGVN",

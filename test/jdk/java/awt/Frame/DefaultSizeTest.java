@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,7 @@
  * questions.
  */
 
+import java.awt.EventQueue;
 import java.awt.Frame;
 
 /*
@@ -43,15 +44,25 @@ public class DefaultSizeTest {
 
 
     public static void main(String[] args) throws Exception {
-        PassFailJFrame.builder()
+        PassFailJFrame passFailJFrame = new PassFailJFrame.Builder()
                 .title("DefaultSizeTest Instructions Frame")
                 .instructions(INSTRUCTIONS)
                 .testTimeOut(5)
                 .rows(10)
                 .columns(45)
-                .testUI(() -> new Frame("DefaultSize"))
                 .screenCapture()
-                .build()
-                .awaitAndCheck();
+                .build();
+
+        EventQueue.invokeAndWait(() -> {
+            Frame frame = new Frame("DefaultSize");
+
+            PassFailJFrame.addTestWindow(frame);
+            PassFailJFrame
+                    .positionTestWindow(frame, PassFailJFrame.Position.HORIZONTAL);
+
+            frame.setVisible(true);
+        });
+
+        passFailJFrame.awaitAndCheck();
     }
 }

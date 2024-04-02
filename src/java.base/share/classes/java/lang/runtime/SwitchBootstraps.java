@@ -468,23 +468,22 @@ public class SwitchBootstraps {
                             Label notNumber = cb.newLabel();
                             cb.aload(SELECTOR_OBJ);
                             cb.instanceof_(ConstantDescs.CD_Number);
-                            if (selectorType == long.class || selectorType == float.class || selectorType == double.class ||
-                                selectorType == Long.class || selectorType == Float.class || selectorType == Double.class) {
+                            if (selectorType == long.class || selectorType == float.class || selectorType == double.class) {
                                 cb.ifeq(next);
                             } else {
                                 cb.ifeq(notNumber);
                             }
                             cb.aload(SELECTOR_OBJ);
                             cb.checkcast(ConstantDescs.CD_Number);
-                            if (selectorType == long.class || selectorType == Long.class) {
+                            if (selectorType == long.class) {
                                 cb.invokevirtual(ConstantDescs.CD_Number,
                                         "longValue",
                                         MethodTypeDesc.of(ConstantDescs.CD_long));
-                            } else if (selectorType == float.class || selectorType == Float.class) {
+                            } else if (selectorType == float.class) {
                                 cb.invokevirtual(ConstantDescs.CD_Number,
                                         "floatValue",
                                         MethodTypeDesc.of(ConstantDescs.CD_float));
-                            } else if (selectorType == double.class || selectorType == Double.class) {
+                            } else if (selectorType == double.class) {
                                 cb.invokevirtual(ConstantDescs.CD_Number,
                                         "doubleValue",
                                         MethodTypeDesc.of(ConstantDescs.CD_double));

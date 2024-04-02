@@ -33,8 +33,9 @@ ifeq ($(call isTargetOs, linux macosx windows), true)
       NAME := le, \
       LINK_TYPE := C++, \
       OPTIMIZATION := LOW, \
-      LD_SET_ORIGIN := false, \
-      LIBS_unix := $(JDKLIB_LIBS), \
+      CFLAGS := $(CXXFLAGS_JDKLIB), \
+      LDFLAGS := $(LDFLAGS_JDKLIB), \
+      LIBS_unix := $(JDKLIB_LIBS) $(LIBCXX), \
       LIBS_windows := $(JDKLIB_LIBS) user32.lib, \
   ))
 

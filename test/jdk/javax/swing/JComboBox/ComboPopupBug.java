@@ -24,6 +24,7 @@
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
 
 /*
  * @test
@@ -44,43 +45,48 @@ public class ComboPopupBug {
             Click on Close and then click on JComboBox arrow button
             to try to show combobox popup.
             If IllegalStateException is thrown, test will automatically Fail
-            otherwise click Pass.""";
+            otherwise click Pass.  """;
 
     public static void main(String[] args) throws Exception {
-        PassFailJFrame.builder()
+        PassFailJFrame passFailJFrame = new PassFailJFrame.Builder()
                 .title("ComboPopup Instructions")
                 .instructions(instructionsText)
                 .testTimeOut(5)
                 .rows(10)
                 .columns(35)
-                .testUI(ComboPopupBug::createUI)
-                .build()
-                .awaitAndCheck();
-    }
+                .build();
 
-    private static JFrame createUI() {
-        JFrame frame = new JFrame("ComboPopup");
+        SwingUtilities.invokeAndWait(() -> {
+            JFrame frame = new JFrame("ComboPopup");
 
-        JComboBox<String> cb = new JComboBox<>();
-        cb.setEditable(true);
-        cb.addItem("test");
-        cb.addItem("test2");
-        cb.addItem("test3");
+            JComboBox cb = new JComboBox();
+            cb.setEditable(true);
+            cb.addItem("test");
+            cb.addItem("test2");
+            cb.addItem("test3");
+            frame.getContentPane().add(cb, "North");
 
-        JButton b = new JButton("Close");
-        b.addActionListener(
+            JButton b = new JButton("Close");
+            b.addActionListener(
                 (e)->{
                     try {
                         Thread.sleep(3000);
-                    } catch (Exception ignored) {
+                    }
+                    catch (Exception ex) {
                     }
                     frame.setVisible(false);
+
                 });
+            frame.getContentPane().add(b, "South");
+            frame.setSize(200, 200);
 
-        frame.getContentPane().add(cb, "North");
-        frame.getContentPane().add(b, "South");
-        frame.setSize(200, 200);
+            PassFailJFrame.addTestWindow(frame);
+            PassFailJFrame.positionTestWindow(frame,
+                    PassFailJFrame.Position.HORIZONTAL);
 
-        return frame;
+            frame.setVisible(true);
+        });
+
+        passFailJFrame.awaitAndCheck();
     }
 }

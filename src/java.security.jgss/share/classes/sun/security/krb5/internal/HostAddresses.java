@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,8 +42,6 @@ import java.util.*;
 import java.io.IOException;
 import sun.security.krb5.internal.ccache.CCacheOutputStream;
 
-import static sun.security.krb5.internal.Krb5.DEBUG;
-
 /**
  * Implements the ASN.1 HostAddresses type.
  *
@@ -66,6 +64,7 @@ import static sun.security.krb5.internal.Krb5.DEBUG;
  */
 
 public class HostAddresses implements Cloneable {
+    private static boolean DEBUG = sun.security.krb5.internal.Krb5.DEBUG;
     private HostAddress[] addresses = null;
     private volatile int hashCode = 0;
 
@@ -277,25 +276,25 @@ public class HostAddresses implements Cloneable {
     {
         Set<InetAddress> all = new LinkedHashSet<>();
         try {
-            if (DEBUG != null) {
-                DEBUG.println(">>> KrbKdcReq local addresses are:");
+            if (DEBUG) {
+                System.out.println(">>> KrbKdcReq local addresses are:");
             }
             String extra = Config.getInstance().getAll(
                     "libdefaults", "extra_addresses");
             if (extra != null) {
                 for (String s: extra.split("\\s+")) {
                     all.add(InetAddress.getByName(s));
-                    if (DEBUG != null) {
-                        DEBUG.println("   extra_addresses: "
+                    if (DEBUG) {
+                        System.out.println("   extra_addresses: "
                                 + InetAddress.getByName(s));
                     }
                 }
             }
             for (NetworkInterface ni:
                     Collections.list(NetworkInterface.getNetworkInterfaces())) {
-                if (DEBUG != null) {
-                    DEBUG.println("   NetworkInterface " + ni + ":");
-                    DEBUG.println("      "
+                if (DEBUG) {
+                    System.out.println("   NetworkInterface " + ni + ":");
+                    System.out.println("      "
                             + Collections.list(ni.getInetAddresses()));
                 }
                 all.addAll(Collections.list(ni.getInetAddresses()));

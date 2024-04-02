@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2020 Microsoft Corporation. All rights reserved.
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -277,7 +276,7 @@ public class SubstDrive {
      */
     @Test
     public void testGetResolvedSymlinkAttribute() throws IOException {
-        if (!TestUtil.supportsSymbolicLinks(TEST_TEMP_DIRECTORY)) {
+        if (!TestUtil.supportsLinks(TEST_TEMP_DIRECTORY)) {
             return;
         }
 
@@ -309,7 +308,7 @@ public class SubstDrive {
      */
     @Test
     public void testSubstWithSymlinkedDirectory() throws IOException {
-        if (!TestUtil.supportsSymbolicLinks(TEST_TEMP_DIRECTORY)) {
+        if (!TestUtil.supportsLinks(TEST_TEMP_DIRECTORY)) {
             return;
         }
 
@@ -351,7 +350,7 @@ public class SubstDrive {
      */
     @Test
     public void testMoveAndCopyFilesToSymlinkedDrive() throws IOException {
-        if (!TestUtil.supportsSymbolicLinks(TEST_TEMP_DIRECTORY)) {
+        if (!TestUtil.supportsLinks(TEST_TEMP_DIRECTORY)) {
             return;
         }
 

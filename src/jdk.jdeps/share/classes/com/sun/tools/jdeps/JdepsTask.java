@@ -536,8 +536,7 @@ class JdepsTask {
             }
             return EXIT_CMDERR;
         } catch (ResolutionException | FindException e) {
-            Throwable cause = e.getCause();
-            reportError("err.exception.message", cause != null ? cause.getMessage() : e.getMessage());
+            reportError("err.exception.message", e.getMessage());
             return EXIT_CMDERR;
         } catch (IOException e) {
             e.printStackTrace();

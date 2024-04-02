@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,8 +47,6 @@ import java.util.List;
 import java.util.Objects;
 
 import sun.security.krb5.internal.util.KerberosString;
-
-import static sun.security.krb5.internal.Krb5.DEBUG;
 /**
  * Implements the ASN.1 KRBError type.
  *
@@ -104,6 +102,8 @@ public class KRBError implements java.io.Serializable {
     private Checksum eCksum; //optional
 
     private PAData[] pa;    // PA-DATA in eData
+
+    private static boolean DEBUG = Krb5.DEBUG;
 
     private void readObject(ObjectInputStream is)
             throws IOException, ClassNotFoundException {
@@ -232,16 +232,16 @@ public class KRBError implements java.io.Serializable {
                 // may fail.
                 parsePAData(data);
             } catch (Exception e) {
-                if (DEBUG != null) {
-                    DEBUG.println("Unable to parse eData field of KRB-ERROR:\n" +
+                if (DEBUG) {
+                    System.out.println("Unable to parse eData field of KRB-ERROR:\n" +
                             new sun.security.util.HexDumpEncoder().encodeBuffer(data));
                 }
                 throw new IOException(
                         "Unable to parse eData field of KRB-ERROR", e);
             }
         } else {
-            if (DEBUG != null) {
-                DEBUG.println("Unknown eData field of KRB-ERROR:\n" +
+            if (DEBUG) {
+                System.out.println("Unknown eData field of KRB-ERROR:\n" +
                         new sun.security.util.HexDumpEncoder().encodeBuffer(data));
             }
         }
@@ -260,8 +260,8 @@ public class KRBError implements java.io.Serializable {
             DerValue tmp = derPA.data.getDerValue();
             PAData pa_data = new PAData(tmp);
             paList.add(pa_data);
-            if (DEBUG != null) {
-                DEBUG.println(pa_data.toString());
+            if (DEBUG) {
+                System.out.println(pa_data);
             }
         }
         pa = paList.toArray(new PAData[paList.size()]);
@@ -389,35 +389,35 @@ public class KRBError implements java.io.Serializable {
      * For debug use only
      */
     private void showDebug() {
-        if (DEBUG != null) {
-            DEBUG.println(">>>KRBError:");
+        if (DEBUG) {
+            System.out.println(">>>KRBError:");
             if (cTime != null)
-                DEBUG.println("\t cTime is " + cTime.toDate().toString() + " " + cTime.toDate().getTime());
+                System.out.println("\t cTime is " + cTime.toDate().toString() + " " + cTime.toDate().getTime());
             if (cuSec != null) {
-                DEBUG.println("\t cuSec is " + cuSec.intValue());
+                System.out.println("\t cuSec is " + cuSec.intValue());
             }
 
-            DEBUG.println("\t sTime is " + sTime.toDate().toString
+            System.out.println("\t sTime is " + sTime.toDate().toString
                                () + " " + sTime.toDate().getTime());
-            DEBUG.println("\t suSec is " + suSec);
-            DEBUG.println("\t error code is " + errorCode);
-            DEBUG.println("\t error Message is " + Krb5.getErrorMessage(errorCode));
+            System.out.println("\t suSec is " + suSec);
+            System.out.println("\t error code is " + errorCode);
+            System.out.println("\t error Message is " + Krb5.getErrorMessage(errorCode));
             if (crealm != null) {
-                DEBUG.println("\t crealm is " + crealm.toString());
+                System.out.println("\t crealm is " + crealm.toString());
             }
             if (cname != null) {
-                DEBUG.println("\t cname is " + cname.toString());
+                System.out.println("\t cname is " + cname.toString());
             }
             if (sname != null) {
-                DEBUG.println("\t sname is " + sname.toString());
+                System.out.println("\t sname is " + sname.toString());
             }
             if (eData != null) {
-                DEBUG.println("\t eData provided.");
+                System.out.println("\t eData provided.");
             }
             if (eCksum != null) {
-                DEBUG.println("\t checksum provided.");
+                System.out.println("\t checksum provided.");
             }
-            DEBUG.println("\t msgType is " + msgType);
+            System.out.println("\t msgType is " + msgType);
         }
     }
 

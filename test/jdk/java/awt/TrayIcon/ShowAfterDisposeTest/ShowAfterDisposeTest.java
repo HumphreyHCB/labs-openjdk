@@ -21,6 +21,15 @@
  * questions.
  */
 
+/*
+ * @test
+ * @bug 6384984 8004032
+ * @library ../../regtesthelpers /test/lib
+ * @build PassFailJFrame jtreg.SkippedException
+ * @summary TrayIcon try to dispay a tooltip when is not visible
+ * @run main/manual ShowAfterDisposeTest
+*/
+
 import java.awt.AWTException;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -33,18 +42,7 @@ import java.awt.image.BufferedImage;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
-/*
- * @test
- * @bug 6384984 8004032 8316931
- * @library ../../regtesthelpers /test/lib
- * @build PassFailJFrame jtreg.SkippedException
- * @summary TrayIcon try to dispay a tooltip when is not visible
- * @run main/manual ShowAfterDisposeTest
- */
 public class ShowAfterDisposeTest {
-    private static SystemTray tray;
-    private static TrayIcon icon;
-
     public static void main(String[] args) throws Exception {
         if (!SystemTray.isSupported()) {
             throw new jtreg.SkippedException("The test cannot be run because SystemTray is not supported.");
@@ -66,21 +64,15 @@ public class ShowAfterDisposeTest {
             "3) If the bug is reproducible then the test will fail without assistance.\n" +
             "4) Just press the 'pass' button.";
 
-        try {
-            PassFailJFrame.builder()
-                    .title("Test Instructions Frame")
-                    .instructions(instructions)
-                    .testTimeOut(10)
-                    .rows(10)
-                    .columns(45)
-                    .testUI(ShowAfterDisposeTest::showFrameAndIcon)
-                    .build()
-                    .awaitAndCheck();
-        } finally {
-            if (tray != null) {
-                tray.remove(icon);
-            }
-        }
+        PassFailJFrame.builder()
+                .title("Test Instructions Frame")
+                .instructions(instructions)
+                .testTimeOut(10)
+                .rows(10)
+                .columns(45)
+                .testUI(ShowAfterDisposeTest::showFrameAndIcon)
+                .build()
+                .awaitAndCheck();
     }
 
     private static JFrame showFrameAndIcon() {
@@ -95,8 +87,8 @@ public class ShowAfterDisposeTest {
         g.fillRect(6, 6, 20, 20);
         g.dispose();
 
-        tray = SystemTray.getSystemTray();
-        icon = new TrayIcon(img);
+        final SystemTray tray = SystemTray.getSystemTray();
+        final TrayIcon icon = new TrayIcon(img);
         icon.setImageAutoSize(true);
         icon.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent ev) {

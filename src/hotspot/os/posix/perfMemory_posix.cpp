@@ -1086,10 +1086,11 @@ static char* mmap_create_shared(size_t size) {
 static void unmap_shared(char* addr, size_t bytes) {
   int res;
   if (MemTracker::enabled()) {
-    ThreadCritical tc;
+    // Note: Tracker contains a ThreadCritical.
+    Tracker tkr(Tracker::release);
     res = ::munmap(addr, bytes);
     if (res == 0) {
-      MemTracker::record_virtual_memory_release((address)addr, bytes);
+      tkr.record((address)addr, bytes);
     }
   } else {
     res = ::munmap(addr, bytes);

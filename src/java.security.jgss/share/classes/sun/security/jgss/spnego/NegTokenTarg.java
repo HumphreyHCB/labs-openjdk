@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,8 +29,6 @@ import java.io.*;
 import org.ietf.jgss.*;
 import sun.security.jgss.*;
 import sun.security.util.*;
-
-import static sun.security.jgss.spnego.SpNegoContext.DEBUG;
 
 /**
  * Implements the SPNEGO NegTokenTarg token
@@ -105,8 +103,8 @@ public class NegTokenTarg extends SpNegoToken {
 
         // mechListMIC with CONTEXT 03
         if (mechListMIC != null) {
-            if (DEBUG != null) {
-                DEBUG.println("SpNegoToken NegTokenTarg: " +
+            if (DEBUG) {
+                System.out.println("SpNegoToken NegTokenTarg: " +
                         "sending MechListMIC");
             }
             DerOutputStream mic = new DerOutputStream();
@@ -143,16 +141,16 @@ public class NegTokenTarg extends SpNegoToken {
                 if (tmp2.isContextSpecific((byte)0x00)) {
                     lastField = checkNextField(lastField, 0);
                     negResult = tmp2.data.getEnumerated();
-                    if (DEBUG != null) {
-                        DEBUG.println("SpNegoToken NegTokenTarg: negotiated" +
+                    if (DEBUG) {
+                        System.out.println("SpNegoToken NegTokenTarg: negotiated" +
                                     " result = " + getNegoResultString(negResult));
                     }
                 } else if (tmp2.isContextSpecific((byte)0x01)) {
                     lastField = checkNextField(lastField, 1);
                     ObjectIdentifier mech = tmp2.data.getOID();
                     supportedMech = new Oid(mech.toString());
-                    if (DEBUG != null) {
-                        DEBUG.println("SpNegoToken NegTokenTarg: " +
+                    if (DEBUG) {
+                        System.out.println("SpNegoToken NegTokenTarg: " +
                                     "supported mechanism = " + supportedMech);
                     }
                 } else if (tmp2.isContextSpecific((byte)0x02)) {
@@ -162,8 +160,8 @@ public class NegTokenTarg extends SpNegoToken {
                     lastField = checkNextField(lastField, 3);
                     if (!GSSUtil.useMSInterop()) {
                         mechListMIC = tmp2.data.getOctetString();
-                        if (DEBUG != null) {
-                            DEBUG.println("SpNegoToken NegTokenTarg: " +
+                        if (DEBUG) {
+                            System.out.println("SpNegoToken NegTokenTarg: " +
                                                 "MechListMIC Token = " +
                                                 getHexBytes(mechListMIC));
                         }

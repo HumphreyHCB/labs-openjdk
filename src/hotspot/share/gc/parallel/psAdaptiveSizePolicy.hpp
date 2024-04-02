@@ -27,6 +27,7 @@
 
 #include "gc/shared/adaptiveSizePolicy.hpp"
 #include "gc/shared/gcCause.hpp"
+#include "gc/shared/gcStats.hpp"
 #include "gc/shared/gcUtil.hpp"
 #include "utilities/align.hpp"
 
@@ -71,8 +72,8 @@ class PSAdaptiveSizePolicy : public AdaptiveSizePolicy {
   // Footprint statistics
   AdaptiveWeightedAverage* _avg_base_footprint;
 
-  // Statistics for promoted objs
-  AdaptivePaddedNoZeroDevAverage*   _avg_promoted;
+  // Statistical data gathered for GC
+  GCStats _gc_stats;
 
   // Variable for estimating the major and minor pause times.
   // These variables represent linear least-squares fits of
@@ -165,7 +166,7 @@ class PSAdaptiveSizePolicy : public AdaptiveSizePolicy {
  public:
   // Accessors for use by performance counters
   AdaptivePaddedNoZeroDevAverage*  avg_promoted() const {
-    return _avg_promoted;
+    return _gc_stats.avg_promoted();
   }
   AdaptiveWeightedAverage* avg_base_footprint() const {
     return _avg_base_footprint;

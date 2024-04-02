@@ -3146,6 +3146,9 @@ bool JvmtiSampledObjectAllocEventCollector::object_alloc_is_safe_to_sample() {
     return false;
   }
 
+  if (MultiArray_lock->owner() == thread) {
+    return false;
+  }
   return true;
 }
 

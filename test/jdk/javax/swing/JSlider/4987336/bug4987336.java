@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,58 +21,25 @@
  * questions.
  */
 
-/*
- * @test
- * @bug 4987336
- * @summary JSlider doesn't show label's animated icon.
- * @library /java/awt/regtesthelpers
- * @build PassFailJFrame
- * @run main/manual bug4987336
+/* @test
+   @bug 4987336
+   @summary JSlider doesn't show label's animated icon.
+   @author Pavel Porvatov
+   @run applet/manual=done bug4987336.html
 */
+
+import javax.swing.*;
+import javax.swing.border.TitledBorder;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import javax.swing.ButtonGroup;
-import javax.swing.BoxLayout;
-import javax.swing.ImageIcon;
-import javax.swing.JComponent;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JRadioButton;
-import javax.swing.JScrollPane;
-import javax.swing.JSlider;
-import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
-import javax.swing.border.TitledBorder;
 import java.util.Hashtable;
 
-public class bug4987336 {
-    private static final String INSTRUCTIONS = """
-            There are four Sliders.
-            Each of them has a label with animated gif (a waving duke)
-            and a label with static image.
-            If it is rendered correctly, click Pass else click Fail.""";
-
+public class bug4987336 extends JApplet {
     private static final String IMAGE_RES = "box.gif";
 
     private static final String ANIM_IMAGE_RES = "duke.gif";
-    private static JFrame frame;
 
-    public static void main(String[] args) throws Exception {
-        PassFailJFrame.builder()
-                .title("Slider rendering Instructions")
-                .instructions(INSTRUCTIONS)
-                .rows(5)
-                .columns(35)
-                .testUI(bug4987336::createTestUI)
-                .position(PassFailJFrame.Position.TOP_LEFT_CORNER)
-                .build()
-                .awaitAndCheck();
-    }
-
-    private static JFrame createTestUI() {
-        frame = new JFrame("bug4987336");
+    public void init() {
         JPanel pnLafs = new JPanel();
         pnLafs.setLayout(new BoxLayout(pnLafs, BoxLayout.Y_AXIS));
 
@@ -97,9 +64,7 @@ public class bug4987336 {
         pnContent.add(createSlider(true, ANIM_IMAGE_RES, null, IMAGE_RES, IMAGE_RES));
         pnContent.add(createSlider(false, ANIM_IMAGE_RES, null, IMAGE_RES, IMAGE_RES));
 
-        frame.getContentPane().add(new JScrollPane(pnContent));
-        frame.pack();
-        return frame;
+        getContentPane().add(new JScrollPane(pnContent));
     }
 
     private static JSlider createSlider(boolean enabled,
@@ -134,7 +99,7 @@ public class bug4987336 {
         return result;
     }
 
-    private static class LafRadioButton extends JRadioButton {
+    private class LafRadioButton extends JRadioButton {
         public LafRadioButton(final UIManager.LookAndFeelInfo lafInfo) {
             super(lafInfo.getName(), lafInfo.getName().equals(UIManager.getLookAndFeel().getName()));
 
@@ -143,7 +108,7 @@ public class bug4987336 {
                     try {
                         UIManager.setLookAndFeel(lafInfo.getClassName());
 
-                        SwingUtilities.updateComponentTreeUI(frame);
+                        SwingUtilities.updateComponentTreeUI(bug4987336.this);
                     } catch (Exception ex) {
                         // Ignore such errors
                         System.out.println("Cannot set LAF " + lafInfo.getName());

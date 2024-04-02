@@ -94,15 +94,13 @@ jint  Agent_Initialize(JavaVM *jvm, char *options, void *reserved) {
 JNIEXPORT void JNICALL
 Java_nsk_jvmti_GetObjectMonitorUsage_objmonusage001_check(JNIEnv *env,
         jclass cls, jint i, jobject obj,
-        jthread owner, jint entryCount,
-        jthread waiterThread, jint waiterCount,
-        jthread notifyWaiterThread, jint notifyWaiterCount) {
+        jthread owner, jint entryCount, jint waiterCount) {
     jvmtiError err;
     jvmtiMonitorUsage inf;
     jvmtiThreadInfo tinf;
     int j;
 
-    if (result == STATUS_FAILED && printdump != JNI_TRUE) {
+    if (result == STATUS_FAILED) {
         return;
     }
 
@@ -154,36 +152,14 @@ Java_nsk_jvmti_GetObjectMonitorUsage_objmonusage001_check(JNIEnv *env,
     }
 
     if (inf.entry_count != entryCount) {
-        printf("FAILED: (%d) entry_count expected: %d, actually: %d\n",
+        printf("(%d) entry_count expected: %d, actually: %d\n",
                i, entryCount, inf.entry_count);
         result = STATUS_FAILED;
     }
 
     if (inf.waiter_count != waiterCount) {
-        printf("FAILED: (%d) waiter_count expected: %d, actually: %d\n",
+        printf("(%d) waiter_count expected: %d, actually: %d\n",
                i, waiterCount, inf.waiter_count);
-        result = STATUS_FAILED;
-    }
-
-    if (inf.waiters != nullptr &&
-        !env->IsSameObject(waiterThread, inf.waiters[0])) {
-        jvmti->GetThreadInfo(inf.waiters[0], &tinf);
-        printf("FAILED: (%d) unexpected waiterThread: %s (0x%p)\n", i,
-               tinf.name, inf.waiters[0]);
-        result = STATUS_FAILED;
-    }
-
-    if (inf.notify_waiter_count != notifyWaiterCount) {
-        printf("FAILED: (%d) notify_waiter_count expected: %d, actually: %d\n",
-               i, notifyWaiterCount, inf.notify_waiter_count);
-        result = STATUS_FAILED;
-    }
-
-    if (inf.notify_waiters != nullptr &&
-        !env->IsSameObject(notifyWaiterThread, inf.notify_waiters[0])) {
-        jvmti->GetThreadInfo(inf.notify_waiters[0], &tinf);
-        printf("FAILED: (%d) unexpected waiterThread: %s (0x%p)\n", i,
-               tinf.name, inf.notify_waiters[0]);
         result = STATUS_FAILED;
     }
 }

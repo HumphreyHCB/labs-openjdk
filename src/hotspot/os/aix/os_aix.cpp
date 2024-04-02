@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 1999, 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012, 2024 SAP SE. All rights reserved.
+ * Copyright (c) 2012, 2023 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,7 +84,9 @@
 #endif
 
 // put OS-includes here (sorted alphabetically)
+#ifdef AIX_XLC_GE_17
 #include <alloca.h>
+#endif
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
@@ -276,7 +278,7 @@ julong os::Aix::available_memory() {
 
 jlong os::total_swap_space() {
   perfstat_memory_total_t memory_info;
-  if (libperfstat::perfstat_memory_total(nullptr, &memory_info, sizeof(perfstat_memory_total_t), 1) == -1) {
+  if (libperfstat::perfstat_memory_total(NULL, &memory_info, sizeof(perfstat_memory_total_t), 1) == -1) {
     return -1;
   }
   return (jlong)(memory_info.pgsp_total * 4 * K);
@@ -284,7 +286,7 @@ jlong os::total_swap_space() {
 
 jlong os::free_swap_space() {
   perfstat_memory_total_t memory_info;
-  if (libperfstat::perfstat_memory_total(nullptr, &memory_info, sizeof(perfstat_memory_total_t), 1) == -1) {
+  if (libperfstat::perfstat_memory_total(NULL, &memory_info, sizeof(perfstat_memory_total_t), 1) == -1) {
     return -1;
   }
   return (jlong)(memory_info.pgsp_free * 4 * K);
@@ -312,10 +314,7 @@ static bool my_disclaim64(char* addr, size_t size) {
 
   for (unsigned int i = 0; i < numFullDisclaimsNeeded; i ++) {
     if (::disclaim(p, maxDisclaimSize, DISCLAIM_ZEROMEM) != 0) {
-      ErrnoPreserver ep;
-      log_trace(os, map)("disclaim failed: " RANGEFMT " errno=(%s)",
-                         RANGEFMTARGS(p, maxDisclaimSize),
-                         os::strerror(ep.saved_errno()));
+      trcVerbose("Cannot disclaim %p - %p (errno %d)\n", p, p + maxDisclaimSize, errno);
       return false;
     }
     p += maxDisclaimSize;
@@ -323,10 +322,7 @@ static bool my_disclaim64(char* addr, size_t size) {
 
   if (lastDisclaimSize > 0) {
     if (::disclaim(p, lastDisclaimSize, DISCLAIM_ZEROMEM) != 0) {
-      ErrnoPreserver ep;
-      log_trace(os, map)("disclaim failed: " RANGEFMT " errno=(%s)",
-                         RANGEFMTARGS(p, lastDisclaimSize),
-                         os::strerror(ep.saved_errno()));
+      trcVerbose("Cannot disclaim %p - %p (errno %d)\n", p, p + lastDisclaimSize, errno);
       return false;
     }
   }
@@ -1511,12 +1507,15 @@ struct vmembk_t {
   // also check that range is fully page aligned to the page size if the block.
   void assert_is_valid_subrange(char* p, size_t s) const {
     if (!contains_range(p, s)) {
-      fatal(RANGEFMT " is not a sub range of " RANGEFMT, RANGEFMTARGS(p, s),
-            RANGEFMTARGS(addr, size));
+      trcVerbose("[" PTR_FORMAT " - " PTR_FORMAT "] is not a sub "
+              "range of [" PTR_FORMAT " - " PTR_FORMAT "].",
+              p2i(p), p2i(p + s), p2i(addr), p2i(addr + size));
+      guarantee0(false);
     }
     if (!is_aligned_to(p, pagesize) || !is_aligned_to(p + s, pagesize)) {
-      fatal("range " RANGEFMT " is not aligned to pagesize (%lu)",
-            RANGEFMTARGS(p, s), (unsigned long)pagesize);
+      trcVerbose("range [" PTR_FORMAT " - " PTR_FORMAT "] is not"
+              " aligned to pagesize (%lu)", p2i(p), p2i(p + s), (unsigned long) pagesize);
+      guarantee0(false);
     }
   }
 };
@@ -1583,9 +1582,7 @@ static char* reserve_shmated_memory (size_t bytes, char* requested_addr) {
   // We must prevent anyone from attaching too close to the
   // BRK because that may cause malloc OOM.
   if (requested_addr != nullptr && is_close_to_brk((address)requested_addr)) {
-    log_info(os, map)("Wish address " PTR_FORMAT
-                      " is too close to the BRK segment.",
-                      p2i(requested_addr));
+    trcVerbose("Wish address " PTR_FORMAT " is too close to the BRK segment.", p2i(requested_addr));
     // Since we treat an attach to the wrong address as an error later anyway,
     // we return null here
     return nullptr;
@@ -1603,9 +1600,7 @@ static char* reserve_shmated_memory (size_t bytes, char* requested_addr) {
   // Reserve the shared segment.
   int shmid = shmget(IPC_PRIVATE, size, IPC_CREAT | S_IRUSR | S_IWUSR);
   if (shmid == -1) {
-    ErrnoPreserver ep;
-    log_trace(os, map)("shmget(.., " UINTX_FORMAT ", ..) failed (errno=%s).",
-                       size, os::strerror(ep.saved_errno()));
+    trcVerbose("shmget(.., " UINTX_FORMAT ", ..) failed (errno: %d).", size, errno);
     return nullptr;
   }
 
@@ -1619,10 +1614,10 @@ static char* reserve_shmated_memory (size_t bytes, char* requested_addr) {
   memset(&shmbuf, 0, sizeof(shmbuf));
   shmbuf.shm_pagesize = 64*K;
   if (shmctl(shmid, SHM_PAGESIZE, &shmbuf) != 0) {
-    assert(false,
-           "Failed to set page size (need " UINTX_FORMAT
-           " 64K pages) - shmctl failed. (errno=%s).",
-           size / (64 * K), os::strerror(os::get_last_error()));
+    trcVerbose("Failed to set page size (need " UINTX_FORMAT " 64K pages) - shmctl failed with %d.",
+               size / (64*K), errno);
+    // I want to know if this ever happens.
+    assert(false, "failed to set page size for shmat");
   }
 
   // Now attach the shared segment.
@@ -1637,19 +1632,13 @@ static char* reserve_shmated_memory (size_t bytes, char* requested_addr) {
 
   // (A) Right after shmat and before handing shmat errors delete the shm segment.
   if (::shmctl(shmid, IPC_RMID, nullptr) == -1) {
-    ErrnoPreserver ep;
-    log_trace(os, map)("shmctl(%u, IPC_RMID) failed (errno=%s)\n",
-                       shmid,
-                       os::strerror(ep.saved_errno()));
+    trcVerbose("shmctl(%u, IPC_RMID) failed (%d)\n", shmid, errno);
     assert(false, "failed to remove shared memory segment!");
   }
 
   // Handle shmat error. If we failed to attach, just return.
   if (addr == (char*)-1) {
-    ErrnoPreserver ep;
-    log_trace(os, map)("Failed to attach segment at " PTR_FORMAT " (errno=%s).",
-                       p2i(requested_addr),
-                       os::strerror(ep.saved_errno()));
+    trcVerbose("Failed to attach segment at " PTR_FORMAT " (%d).", p2i(requested_addr), errno_shmat);
     return nullptr;
   }
 
@@ -1657,24 +1646,17 @@ static char* reserve_shmated_memory (size_t bytes, char* requested_addr) {
   // work (see above), the system may have given us something other then 4K (LDR_CNTRL).
   const size_t real_pagesize = os::Aix::query_pagesize(addr);
   if (real_pagesize != (size_t)shmbuf.shm_pagesize) {
-    log_trace(os, map)("pagesize is, surprisingly, " SIZE_FORMAT,
-                       real_pagesize);
+    trcVerbose("pagesize is, surprisingly, " SIZE_FORMAT, real_pagesize);
   }
 
   if (addr) {
-    log_trace(os, map)("shm-allocated succeeded: " RANGEFMT
-                       " (" UINTX_FORMAT " %s pages)",
-                       RANGEFMTARGS(addr, size),
-                       size / real_pagesize,
-                       describe_pagesize(real_pagesize));
+    trcVerbose("shm-allocated " PTR_FORMAT " .. " PTR_FORMAT " (" UINTX_FORMAT " bytes, " UINTX_FORMAT " %s pages)",
+      p2i(addr), p2i(addr + size - 1), size, size/real_pagesize, describe_pagesize(real_pagesize));
   } else {
     if (requested_addr != nullptr) {
-      log_trace(os, map)("shm-allocate failed: " RANGEFMT,
-                         RANGEFMTARGS(requested_addr, size));
+      trcVerbose("failed to shm-allocate " UINTX_FORMAT " bytes at with address " PTR_FORMAT ".", size, p2i(requested_addr));
     } else {
-      log_trace(os, map)("failed to shm-allocate " UINTX_FORMAT
-                         " bytes at any address.",
-                         size);
+      trcVerbose("failed to shm-allocate " UINTX_FORMAT " bytes at any address.", size);
     }
   }
 
@@ -1694,13 +1676,9 @@ static bool release_shmated_memory(char* addr, size_t size) {
 
   // TODO: is there a way to verify shm size without doing bookkeeping?
   if (::shmdt(addr) != 0) {
-    ErrnoPreserver ep;
-    log_trace(os, map)("shmdt failed: " RANGEFMT " errno=(%s)",
-                       RANGEFMTARGS(addr, size),
-                       os::strerror(ep.saved_errno()));
+    trcVerbose("error (%d).", errno);
   } else {
-    log_trace(os, map)("shmdt succeded: " RANGEFMT,
-                       RANGEFMTARGS(addr, size));
+    trcVerbose("ok.");
     rc = true;
   }
   return rc;
@@ -1729,18 +1707,14 @@ static char* reserve_mmaped_memory(size_t bytes, char* requested_addr) {
     bytes, p2i(requested_addr));
 
   if (requested_addr && !is_aligned_to(requested_addr, os::vm_page_size()) != 0) {
-    log_trace(os, map)("Wish address " PTR_FORMAT
-                       " not aligned to page boundary.",
-                       p2i(requested_addr));
+    trcVerbose("Wish address " PTR_FORMAT " not aligned to page boundary.", p2i(requested_addr));
     return nullptr;
   }
 
   // We must prevent anyone from attaching too close to the
   // BRK because that may cause malloc OOM.
   if (requested_addr != nullptr && is_close_to_brk((address)requested_addr)) {
-    log_trace(os, map)("Wish address " PTR_FORMAT
-                       " is too close to the BRK segment.",
-                       p2i(requested_addr));
+    trcVerbose("Wish address " PTR_FORMAT " is too close to the BRK segment.", p2i(requested_addr));
     // Since we treat an attach to the wrong address as an error later anyway,
     // we return null here
     return nullptr;
@@ -1783,17 +1757,11 @@ static char* reserve_mmaped_memory(size_t bytes, char* requested_addr) {
       PROT_READ|PROT_WRITE|PROT_EXEC, flags, -1, 0);
 
   if (addr == MAP_FAILED) {
-    ErrnoPreserver ep;
-    log_trace(os, map)("mmap failed: " RANGEFMT " errno=(%s)",
-                       RANGEFMTARGS(requested_addr, size),
-                       os::strerror(ep.saved_errno()));
+    trcVerbose("mmap(" PTR_FORMAT ", " UINTX_FORMAT ", ..) failed (%d)", p2i(requested_addr), size, errno);
     return nullptr;
   } else if (requested_addr != nullptr && addr != requested_addr) {
-    log_trace(os, map)("mmap succeeded: " RANGEFMT
-                       ", but at a different address than"
-                       "requested (" PTR_FORMAT "), will unmap",
-                       RANGEFMTARGS(requested_addr, size),
-                       p2i(addr));
+    trcVerbose("mmap(" PTR_FORMAT ", " UINTX_FORMAT ", ..) succeeded, but at a different address than requested (" PTR_FORMAT "), will unmap",
+               p2i(requested_addr), size, p2i(addr));
     ::munmap(addr, extra_size);
     return nullptr;
   }
@@ -1832,14 +1800,10 @@ static bool release_mmaped_memory(char* addr, size_t size) {
   bool rc = false;
 
   if (::munmap(addr, size) != 0) {
-    ErrnoPreserver ep;
-    log_trace(os, map)("munmap failed: " RANGEFMT " errno=(%s)",
-                       RANGEFMTARGS(addr, size),
-                       os::strerror(ep.saved_errno()));
+    trcVerbose("failed (%d)\n", errno);
     rc = false;
   } else {
-    log_trace(os, map)("munmap succeeded: " RANGEFMT,
-                       RANGEFMTARGS(addr, size));
+    trcVerbose("ok.");
     rc = true;
   }
 
@@ -1857,14 +1821,10 @@ static bool uncommit_mmaped_memory(char* addr, size_t size) {
 
   // Uncommit mmap memory with msync MS_INVALIDATE.
   if (::msync(addr, size, MS_INVALIDATE) != 0) {
-    ErrnoPreserver ep;
-    log_trace(os, map)("msync failed: " RANGEFMT " errno=(%s)",
-                       RANGEFMTARGS(addr, size),
-                       os::strerror(ep.saved_errno()));
+    trcVerbose("failed (%d)\n", errno);
     rc = false;
   } else {
-    log_trace(os, map)("msync succeeded: " RANGEFMT,
-                       RANGEFMTARGS(addr, size));
+    trcVerbose("ok.");
     rc = true;
   }
 
@@ -2012,7 +1972,11 @@ char* os::pd_reserve_memory(size_t bytes, bool exec) {
   if (os::vm_page_size() == 4*K) {
     return reserve_mmaped_memory(bytes, nullptr /* requested_addr */);
   } else {
-    return reserve_shmated_memory(bytes, nullptr /* requested_addr */);
+    if (bytes >= Use64KPagesThreshold) {
+      return reserve_shmated_memory(bytes, nullptr /* requested_addr */);
+    } else {
+      return reserve_mmaped_memory(bytes, nullptr /* requested_addr */);
+    }
   }
 }
 
@@ -2221,7 +2185,11 @@ char* os::pd_attempt_reserve_memory_at(char* requested_addr, size_t bytes, bool 
   if (os::vm_page_size() == 4*K) {
     return reserve_mmaped_memory(bytes, requested_addr);
   } else {
-    return reserve_shmated_memory(bytes, requested_addr);
+    if (bytes >= Use64KPagesThreshold) {
+      return reserve_shmated_memory(bytes, requested_addr);
+    } else {
+      return reserve_mmaped_memory(bytes, requested_addr);
+    }
   }
 
   return addr;

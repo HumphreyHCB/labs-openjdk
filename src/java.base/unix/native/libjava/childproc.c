@@ -33,7 +33,6 @@
 #include <limits.h>
 
 #include "childproc.h"
-#include "jni_util.h"
 
 const char * const *parentPathv;
 

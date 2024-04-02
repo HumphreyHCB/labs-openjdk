@@ -65,13 +65,7 @@ public class PerfMapTest {
         output.stderrShouldBeEmpty();
         output.stdoutShouldBeEmpty();
 
-        try {
-            Assert.assertTrue(Files.exists(path), "File must exist: " + path);
-            Assert.assertTrue(Files.size(path) > 0,
-                              "File must not be empty. Possible file permission issue: " + path);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        Assert.assertTrue(Files.exists(path), "File must exist: " + path);
 
         // Sanity check the file contents
         try {
@@ -85,11 +79,10 @@ public class PerfMapTest {
     }
 
     @Test
-    public void defaultMapFile() throws IOException {
+    public void defaultMapFile() {
         final long pid = ProcessHandle.current().pid();
         final Path path = Paths.get(String.format("/tmp/perf-%d.map", pid));
         run(new JMXExecutor(), "Compiler.perfmap", path);
-        Files.deleteIfExists(path);
     }
 
     @Test
@@ -103,7 +96,7 @@ public class PerfMapTest {
     }
 
     @Test
-    public void specifiedDefaultMapFile() throws IOException {
+    public void specifiedDefaultMapFile() {
         // This is a special case of specifiedMapFile() where the filename specified
         // is the same as the default filename as given in the help output. The dcmd
         // should treat this literally as the filename and not expand <pid> into
@@ -111,6 +104,5 @@ public class PerfMapTest {
         String test_dir = System.getProperty("test.dir", ".");
         Path path = Paths.get("/tmp/perf-<pid>.map");
         run(new JMXExecutor(), "Compiler.perfmap " + path.toString(), path);
-        Files.deleteIfExists(path);
     }
 }

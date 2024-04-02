@@ -181,8 +181,6 @@ class G1GCPhaseTimes : public CHeapObj<mtGC> {
   double _cur_prepare_merge_heap_roots_time_ms;
   double _cur_optional_prepare_merge_heap_roots_time_ms;
 
-  double _cur_distribute_log_buffers_time_ms;
-
   double _cur_pre_evacuate_prepare_time_ms;
 
   double _cur_post_evacuate_cleanup_1_time_ms;
@@ -306,10 +304,6 @@ class G1GCPhaseTimes : public CHeapObj<mtGC> {
     _cur_prepare_merge_heap_roots_time_ms += ms;
   }
 
-  void record_distribute_log_buffers_time_ms(double ms) {
-    _cur_distribute_log_buffers_time_ms += ms;
-  }
-
   void record_or_add_optional_prepare_merge_heap_roots_time(double ms) {
     _cur_optional_prepare_merge_heap_roots_time_ms += ms;
   }
@@ -380,10 +374,6 @@ class G1GCPhaseTimes : public CHeapObj<mtGC> {
 
   double cur_collection_start_sec() {
     return _cur_collection_start_sec;
-  }
-
-  double cur_distribute_log_buffers_time_ms() {
-    return _cur_distribute_log_buffers_time_ms;
   }
 
   double cur_collection_par_time_ms() {

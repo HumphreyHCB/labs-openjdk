@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ import java.awt.Menu;
 import java.awt.MenuBar;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import javax.swing.SwingUtilities;
 
 /*
  * @test
@@ -53,15 +54,25 @@ public class AddRemoveMenuBarTest_2 {
             """;
 
     public static void main(String[] args) throws Exception {
-        PassFailJFrame.builder()
+        PassFailJFrame passFailJFrame = new PassFailJFrame.Builder()
                 .title("AddRemoveMenuBarTest_2 Instructions")
                 .instructions(INSTRUCTIONS)
                 .testTimeOut(5)
                 .rows(15)
                 .columns(45)
-                .testUI(AddRemoveMenuBar_2::new)
-                .build()
-                .awaitAndCheck();
+                .build();
+
+        SwingUtilities.invokeAndWait(() -> {
+            AddRemoveMenuBar_2 frame = new AddRemoveMenuBar_2();
+
+            PassFailJFrame.addTestWindow(frame);
+            PassFailJFrame.positionTestWindow(frame,
+                    PassFailJFrame.Position.HORIZONTAL);
+
+            frame.setVisible(true);
+        });
+
+        passFailJFrame.awaitAndCheck();
     }
 }
 

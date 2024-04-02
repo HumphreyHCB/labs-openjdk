@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,42 +41,48 @@ import java.util.stream.Stream;
 import jdk.internal.access.SharedSecrets;
 
 public class CDS {
-    // Must be in sync with cdsConfig.hpp
-    private static final int IS_DUMPING_ARCHIVE              = 1 << 0;
-    private static final int IS_DUMPING_STATIC_ARCHIVE       = 1 << 1;
-    private static final int IS_LOGGING_LAMBDA_FORM_INVOKERS = 1 << 2;
-    private static final int IS_USING_ARCHIVE                = 1 << 3;
-    private static final int configStatus = getCDSConfigStatus();
+    private static final boolean isDumpingClassList;
+    private static final boolean isDumpingArchive;
+    private static final boolean isSharingEnabled;
+    private static final boolean isDumpingStaticArchive;
+    static {
+        isDumpingClassList = isDumpingClassList0();
+        isDumpingArchive = isDumpingArchive0();
+        isSharingEnabled = isSharingEnabled0();
+        isDumpingStaticArchive = isDumpingArchive && !isSharingEnabled;
+    }
 
     /**
-     * Should we log the use of lambda form invokers?
-     */
-    public static boolean isLoggingLambdaFormInvokers() {
-        return (configStatus & IS_LOGGING_LAMBDA_FORM_INVOKERS) != 0;
+      * indicator for dumping class list.
+      */
+    public static boolean isDumpingClassList() {
+        return isDumpingClassList;
     }
 
     /**
       * Is the VM writing to a (static or dynamic) CDS archive.
       */
     public static boolean isDumpingArchive() {
-        return (configStatus & IS_DUMPING_ARCHIVE) != 0;
+        return isDumpingArchive;
     }
 
     /**
-      * Is the VM using at least one CDS archive?
+      * Is sharing enabled.
       */
-    public static boolean isUsingArchive() {
-        return (configStatus & IS_USING_ARCHIVE) != 0;
+    public static boolean isSharingEnabled() {
+        return isSharingEnabled;
     }
 
     /**
       * Is dumping static archive.
       */
     public static boolean isDumpingStaticArchive() {
-        return (configStatus & IS_DUMPING_STATIC_ARCHIVE) != 0;
+        return isDumpingStaticArchive;
     }
 
-    private static native int getCDSConfigStatus();
+    private static native boolean isDumpingClassList0();
+    private static native boolean isDumpingArchive0();
+    private static native boolean isSharingEnabled0();
     private static native void logLambdaFormInvoker(String line);
 
     /**
@@ -106,8 +112,8 @@ public class CDS {
     /**
      * log lambda form invoker holder, name and method type
      */
-    public static void logLambdaFormInvoker(String prefix, String holder, String name, String type) {
-        if (isLoggingLambdaFormInvokers()) {
+    public static void traceLambdaFormInvoker(String prefix, String holder, String name, String type) {
+        if (isDumpingClassList) {
             logLambdaFormInvoker(prefix + " " + holder + " " + name + " " + type);
         }
     }
@@ -115,8 +121,8 @@ public class CDS {
     /**
       * log species
       */
-    public static void logSpeciesType(String prefix, String cn) {
-        if (isLoggingLambdaFormInvokers()) {
+    public static void traceSpeciesType(String prefix, String cn) {
+        if (isDumpingClassList) {
             logLambdaFormInvoker(prefix + " " + cn);
         }
     }

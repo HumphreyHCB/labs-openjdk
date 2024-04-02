@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,8 +36,6 @@ import sun.security.krb5.internal.KerberosTime;
 import sun.security.krb5.internal.Krb5;
 import sun.security.krb5.internal.PAData;
 import sun.security.krb5.internal.crypto.EType;
-
-import static sun.security.krb5.internal.Krb5.DEBUG;
 
 /**
  * A manager class for AS-REQ communications.
@@ -350,8 +348,8 @@ public final class KrbAsReqBuilder {
                 if (!preAuthFailedOnce && (
                         ke.returnCode() == Krb5.KDC_ERR_PREAUTH_FAILED ||
                         ke.returnCode() == Krb5.KDC_ERR_PREAUTH_REQUIRED)) {
-                    if (DEBUG != null) {
-                        DEBUG.println("KrbAsReqBuilder: " +
+                    if (Krb5.DEBUG) {
+                        System.out.println("KrbAsReqBuilder: " +
                                 "PREAUTH FAILED/REQ, re-send AS-REQ");
                     }
                     preAuthFailedOnce = true;
@@ -405,8 +403,8 @@ public final class KrbAsReqBuilder {
                         .getBooleanObject("libdefaults", "canonicalize") ==
                         Boolean.TRUE;
             } catch (KrbException e) {
-                if (DEBUG != null) {
-                    DEBUG.println("Exception in getting canonicalize," +
+                if (Krb5.DEBUG) {
+                    System.out.println("Exception in getting canonicalize," +
                             " using default value " +
                             Boolean.valueOf(canonicalizeConfig) + ": " +
                             e.getMessage());
@@ -452,8 +450,8 @@ public final class KrbAsReqBuilder {
                     }
                 }
                 if (count < Config.MAX_REFERRALS && sendCanonicalize) {
-                    if (DEBUG != null) {
-                        DEBUG.println("KrbAsReqBuilder: AS-REQ failed." +
+                    if (Krb5.DEBUG) {
+                        System.out.println("KrbAsReqBuilder: AS-REQ failed." +
                                 " Retrying with CANONICALIZE false.");
                     }
 
